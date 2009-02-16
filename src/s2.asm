@@ -3,6 +3,24 @@
 .include	"src\includes\player_states.asm"		;values for player object state
 .include	"src\includes\sound_values.asm"			;values for music/sfx
 
+
+;=====================================================================
+;Changing the "Version" variable will determine which version
+;of the ROM is built. Values are:
+;	1 - for version 1.0
+;	2 - for version 2.2
+
+.DEF Version		1
+
+;some basic sense-checking on the version variable
+.IFNEQ Version 2
+	.IFNEQ Version 1
+		.PRINTT "FAIL: Invalid build version!\n"
+		.FAIL 
+	.ENDIF
+.ENDIF
+;=====================================================================
+
 .def LevelDataStart			$C001
 
 .def HorizontalVelocity		$D516
@@ -172,7 +190,12 @@ _error_msg:
 
 
 .db "MS SONIC", $A5, "THE", $A5, "HEDGEHOG.2 "
-.db "Ver1.00 1992/09/05 SEGA /Aspect Co.,Ltd "
+.IFEQ Version 2.2
+	.db "Ver2.20 1992/12/09"
+.ELSE
+	.db "Ver1.00 1992/09/05"
+.ENDIF
+.db " SEGA /Aspect Co.,Ltd "
 
 
 ;****************************************************************
@@ -4934,16 +4957,29 @@ LABEL_3456:
 	ret
 
 LABEL_3467:
-	ld		hl, $FF40	   ;set HorizontalVelocity
+.IFEQ Version 2.2
+	res		7, (ix+$04)
+	ld		hl, $FF00
+.ELSE
+	ld		hl, $FF40	;set HorizontalVelocity
+.ENDIF
 	ld		(ix+$16), l
 	ld		(ix+$17), h
 	call	LABEL_3A62
 	bit		1, (ix+$23)	 ;check to see if we're standing on something
 	ret		z
+
+.IFEQ Version 1.0
 	ld		hl, $FF00
 	ld		(ix+$16), l	 ;set HorizontalVelocity
 	ld		(ix+$17), h
 	jp		Player_SetState_Walking
+	
+.ELSE
+	jp		Player_SetState_Walking
+	
+.ENDIF
+	
 
 LABEL_3484:
 	call	LABEL_3A62
@@ -5462,7 +5498,13 @@ LABEL_384E:
 	ld		($D520), a			  ;reset colliding object index
 	ret
 
-+:  set	 0, (ix+$03)
++:
+.IFEQ Version 2.2
+	ld		a, ($D501)
+	cp		PlayerState_Rolling
+	jr		z, -
+.ENDIF
+	set		0, (ix+$03)
 	ld		hl, $0080			   ;make player rebound down
 	ld		(VerticalVelocity), hl
 	jr		-
@@ -6156,7 +6198,12 @@ LABEL_3CF1:	 ;subtract velocity from hpos
 ;This ORG directive keeps things aligned. It's hacky and probably
 ;should be changed.
 
-.org $3D16
+.ORG $3D16
+
+.IFEQ Version 2.2
+.db $D5, $C9
+.ENDIF
+
 DATA_3D16:
 .incbin "unknown\s2_3D16.bin"
 
@@ -6172,9 +6219,16 @@ DATA_3E96:
 DATA_3F16:
 .incbin "unknown\s2_3F16.bin"
 
+.IFEQ Version 1.0
+.db $00, $00
+.ENDIF
+
 .BANK 1 SLOT 1
 .ORG $0000
 
+.IFEQ Version 2.2
+.db	$00, $00
+.ENDIF
 
 .db $00, $00, $05, $00, $FB, $FF, $00, $00 
 .db $00, $00, $00, $00, $00, $00, $00, $00 
@@ -6305,20 +6359,38 @@ LABEL_4109:
 	xor		a
 	sbc		hl, de
 	jp		c, LABEL_4135
+	
 	ld		a, h
 	or		a
 	jp		nz, LABEL_4135
+	
 	ld		a, l
 	cp		$F0
 	jp		nc, LABEL_4135
+	
+.IFEQ Version 2.2
+	ld		hl, ($D176)
+	ld		de, $0020
+	add		hl, de
+	ld		de, ($D514)
+	ex		de, hl
+.ELSE
 	ld		de, ($D176)
 	ld		hl, ($D514)
+.ENDIF
 	xor		a
 	sbc		hl, de
+	
+.IFEQ Version 2.2
+	jp		nc, +
+	ld		($D514), de
++:
+.ELSE
 	jp		c, LABEL_4135
 	ld		a, h
 	or		a
 	jp		nz, LABEL_4135
+.ENDIF
 	xor		a
 	ret
 
@@ -7241,6 +7313,11 @@ LABEL_47C9:
 	and		$BF
 	ret		nz
 
+.IFEQ Version 2.2
+	ld		a, ($D501)
+	cp		PlayerState_EndOfLevel
+	ret		z
+.ENDIF
 	jp		Engine_ChangeLevelMusic
 
 
@@ -7260,7 +7337,11 @@ Collision_Monitor:		  ;$47F6
 	bit		3, a
 	jr		nz, Collision_Monitor_Invincibility
 	bit		6, a
+.IFEQ Version 2.2
+	jp		nz, LABEL_4884
+.ELSE
 	jr		nz, LABEL_4884
+.ENDIF
 	ret
 
 Collision_Monitor_Rings:	;4817
@@ -7271,7 +7352,23 @@ Collision_Monitor_Rings:	;4817
 	ld		(RingCounter), a
 	ld		a, SFX_10Rings
 	ld		($DD04), a
+
+.IFEQ Version 2.2
+	call	Engine_UpdateRingCounterSprites
+	
+	ld		a, (RingCounter)
+	cp		$10
+	ret		nc
+	
+	ld		a, ($D298)
+	inc		a
+	ld		(LifeCounter), a
+	ld		a, SFX_ExtraLife
+	ld		($DD04), a
+	jp		LABEL_25AC
+.ELSE
 	jp		Engine_UpdateRingCounterSprites
+.ENDIF
 
 Collision_Monitor_Life:	 ;482A
 	res		1, (hl)
@@ -7368,9 +7465,10 @@ LABEL_48B8:
 	ld		a, r
 	and		$04
 	ret		nz
-	ld		c, $0A
+	ld		c, Object_ALZ_Bubble
 	ld		h, $03
 	jp		Engine_AllocateObjectHighPriority
+	
 
 LABEL_48C4:
 	ld		a, (PlayerUnderwater)
@@ -7381,6 +7479,7 @@ LABEL_48C4:
 	rr		l
 	ld		($D36D), hl
 	ret
+
 
 LABEL_48D4:
 	ret
@@ -7581,7 +7680,7 @@ Engine_UpdateCameraXPos:	;$49FA
 	jp		nz, Engine_LoadMappings32_Column		;load a column of tiles from the 32x32 mappings
 	ret
 
-+:  ld	  a, ($D174)
++:	ld		a, ($D174)
 	ld		b, a
 	ld		a, ($D284)
 	xor		b
@@ -8453,7 +8552,12 @@ LABEL_5EFD:
 	or		a
 	ret		z				   ;is there an object in this slot?
 	cp		$F0				 ;jump if object >= $F0
+
+.IFEQ Version 2.2
+	jr		nc, LABEL_5F73
+.ELSE
 	jr		nc, LABEL_5F51
+.ENDIF
 	ld		a, (ix+$00)
 	cp		$50
 	jr		nc, LABEL_5F3D	  ;object types >= 80 are in bank 30
@@ -8490,6 +8594,17 @@ LABEL_5F3D:
 	call	LABEL_617C
 	ret		
 
+.IFEQ Version 2.2
+LABEL_5F73:
+	cp		$FE
+	jp		z, $620F
+	cp		$FF
+	jp		z, $6245
+	ret
+.ENDIF
+
+
+.IFEQ Version 1.0
 LABEL_5F51:
 	and		$0F
 	add		a, a
@@ -8523,6 +8638,8 @@ DATA_5F60:
 
 LABEL_5F80:
 ret
+
+.ENDIF
 
 
 Logic_Pointers	  ;$5F81
@@ -12735,7 +12852,11 @@ UpdateCyclingPalette_Rain:	  ;$7D41
 	add		a, (iy+$02)
 	ld		e, a
 	ld		d, $00
+.IFEQ Version 2.2
+	ld		hl, $AECA
+.ELSE
 	ld		hl, DATA_B30_AF4A
+.ENDIF
 	add		hl, de
 	ld		de, $D4CA
 	ld		bc, $0003
@@ -12785,7 +12906,11 @@ UpdateCyclingPalette_Lava:	  ;$7DA7
 	add		a, (iy+$02)
 	ld		e, a
 	ld		d, $00
+.IFEQ Version 2.2
+	ld		hl, $AEC1
+.ELSE
 	ld		hl, DATA_B30_AF41
+.ENDIF
 	add		hl, de
 	ld		de, $D4D3  ;update 3 colours in CRAM
 	ld		bc, $0003
@@ -13060,7 +13185,7 @@ Engine_AnimateRingArt:		;$7FAE
 	jr		c, +
 	
 	xor		a				;reset the art frame number
-	
+
 +:	ld		($D351), a		;get the ring art frame number
 	add		a, a			;calculate the offset from the source address
 	add		a, a
@@ -13096,11 +13221,20 @@ Engine_AnimateRingArt:		;$7FAE
 
 .ORG $3FF0	  ;offset within current bank
 
-ROM_HEADER:	 ;$7FF0
+ROM_HEADER:				;$7FF0
 .db "TMR SEGA" 
-.db $00, $00		;reserved
-.db $99, $5F		;checksum
-.db $15, $90, $00   ;product code/version
+.db $00, $00			;reserved
+.IFEQ Version 1.0
+	.db $99, $5F		;checksum
+.ELSE
+	.db $6C, $9E
+.ENDIF
+.db $15, $90			;product code
+.IFEQ Version 1.0
+	.db $00				;version
+.ELSE
+	.db $01
+.ENDIF
 .db $40			 ;region code/rom size
 
 

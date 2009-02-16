@@ -1,5 +1,9 @@
 Layout_GMZ1:
+.IFEQ Version 2.2
+.incbin "layout\gmz\layout_gmz1_2.2.bin"
+.ELSE
 .incbin "layout\gmz\layout_gmz1.bin"
+.ENDIF
 
 Layout_GMZ2:
 .incbin "layout\gmz\layout_gmz2.bin"

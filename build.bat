@@ -1,32 +1,40 @@
-@echo off
-echo Assembling...
-wla_dx_binaries_latest\wla-z80 -vo src\s2.asm s2.o> build_report.txt
-if %ERRORLEVEL% neq 0 goto assemble_fail
+@ECHO OFF
 
-echo Linking...
+IF EXIST s2.o DEL s2.o
+IF EXIST s2.sym DEL s2.sym
+IF EXIST s2.sms DEL s2.sms
+
+ECHO Assembling...
+wla_dx_binaries_latest\wla-z80 -vo src\s2.asm s2.o > build_report.txt
+
+IF %ERRORLEVEL% NEQ 0 GOTO assemble_fail
+IF NOT EXIST s2.o GOTO assemble_fail
+
+ECHO Linking...
 wla_dx_binaries_latest\wlalink -rs link.txt s2.sms
-if %ERRORLEVEL% neq 0 goto link_fail
+IF %ERRORLEVEL% NEQ 0 GOTO link_fail
 
-echo ==========================
-echo   Build Success.
-echo ==========================
+ECHO ==========================
+ECHO Build Success.
+ECHO ==========================
 
-rem	Use fcomp to compare with original ROM
-echo Comparing with original:
-fcomp s2.sms "Sonic the Hedgehog 2 (UE) [!].sms"
+REM Use fcomp to compare with original ROM
+REM ECHO Comparing with original:
+REM fcomp s2.sms "Sonic the Hedgehog 2 (UE) [!].sms"
+REM fcomp s2.sms "Sonic the Hedgehog 2 (UE) (V2.2).sms"
 
-goto end
+GOTO end
 
 :assemble_fail
-echo Error while assembling.
-goto fail
+ECHO Error while assembling.
+GOTO fail
 :link_fail
-echo Error while linking.
+ECHO Error while linking.
 :fail
 
-echo ==========================
-echo   Build failure."
-echo ==========================
+ECHO ==========================
+ECHO Build failure."
+ECHO ==========================
 
 :end
-pause
+PAUSE

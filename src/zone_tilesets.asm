@@ -1,14 +1,14 @@
-;Tileset headers for each zone/act
+;Tileset header chains for each zone/act
 ;Under Ground Zone
-.db :Art_UGZ_Level_Tiles
+.db :Art_UGZ_Level_Tiles	;act1
 	.dw $2100
 	.dw Art_UGZ_Level_Tiles
 	.dw Tileset_UGZ
-.db :Art_UGZ_Level_Tiles
+.db :Art_UGZ_Level_Tiles	;act2
 	.dw $2100
 	.dw Art_UGZ_Level_Tiles
 	.dw Tileset_UGZ
-.db :Art_UGZ_Level_Tiles
+.db :Art_UGZ_Level_Tiles	;act3
 	.dw $2100
 	.dw Art_UGZ_Level_Tiles
 	.dw Tileset_UGZ
@@ -162,10 +162,10 @@ Tileset_UGZ:
 .db :Art_Badnik_Motobug
 	.dw $1300
 	.dw Art_Badnik_Motobug
-.db :Art_Badnik_Motobug + $80
+.db :Art_Badnik_Motobug + $80	;mirror tiles
 	.dw $1500
 	.dw Art_Badnik_Motobug 
-.db :Art_Badnik_Newtron + $80
+.db :Art_Badnik_Newtron + $80	;mirror tiles
 	.dw $1700
 	.dw Art_Badnik_Newtron
 .db :Art_Badnik_Crab
