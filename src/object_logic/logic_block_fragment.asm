@@ -83,7 +83,7 @@ DATA_B31_ACB8:
 
 BlockFragment_State_01_Logic_01:		;$ACD8
 	bit     6, (ix+$04)
-	jp      nz, LABEL_200 + $06
+	jp      nz, VF_Engine_DeallocateObject
 	ld      bc, $1000
 	ld      de, $00C0
 	call    VF_Engine_SetObjectVerticalSpeed

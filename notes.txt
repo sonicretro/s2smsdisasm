@@ -13,7 +13,7 @@ Structure at $D15E	-	level attributes
 	$D168 -> $D169	-	Pointer to table of multiples of level width.
 						This is used by collision routines to quickly index
 						a specific row in the level data. See subroutine at
-						$7481. Tables are stored in "block_row_offsets.asm".
+						$7481. Tables are stored in "level_width_multiples.asm".
 	$D16A -> $D16B	-	2's complement of level width in blocks.
 	$D16C -> $D16D	-	Width of level (in mapping blocks).
 	$D16E -> $D16F	-	Vertical offset into layout data. This should be
@@ -28,6 +28,7 @@ Structure at $D15E	-	level attributes
 Miscellaneous Variables
 
 	$D12B			-	Copy of current bank number.
+	$D12C			-	Level Select flag
 	
 	$D12F			-	Frame counter.
 	
@@ -81,6 +82,8 @@ Miscellaneous Variables
 						the specified threshold (defaults to $3C) the level
 						time is incremented.
 
+	$D2D2 -> $D2D3	-	Address of next controller byte for demo sequences.
+	
 	$D2CA -> $D2CB	-	Initial screen x pos for current level/act
 	$D2CC -> $D2CD	-	Initial screen y pos for current level/act
 	$D2CE -> $D2CF	-	Camera horizontal lock position?
@@ -130,14 +133,14 @@ Miscellaneous Variables
 
 	$D39A			-	Player's position within a loop (GHZ/ALZ)
 	
-	$D39D			-	Monitor collision type. See "src\logic\logic_monitors.asm".
+	$D39D			-	Monitor collision type. See "src\object_logic\logic_monitors.asm".
 	$D39E -> $D39F	-	Used by minecart logic to store pointer to minecart
 						object descriptor.
 
 	$D3A8			-	"Player Hurt" trigger. Causes player to lose rings
 						or die.
 	$D3A9			-	Flashing sprite timer.
-	
+	$D3AA			-	Jump hold counter.
 	$D3AB			-	Pattern load cue trigger.
 	$D3AC			-	PLC: source bank. Can be zero if the PLC handler is
 						designed to use a specific bank (e.g. chaos emeralds).
@@ -249,7 +252,8 @@ Object Descriptor Structure
 								current animation frame.
 		$D52C				-	Sprite width in tiles
 		$D52D				-	Sprite half-height?
-
+		$D52E				-	Counter used to toggle visibility object's 
+								sprites.
 		$D532				-	Current power up (invincible/speed shoes/etc).
 
 		$D53A -> $D53B		-	Initial horizontal pos (set by object load
@@ -381,7 +385,8 @@ Object Logic
 	------------+---------------+------------------------------------------------------------
 		 00		|	None		|	Marks end of animation sequence. Loop back to start of
 				|				|	current animation.
-		 01		|	None		|	destroy sprite? Always used in place of $FF, $00.
+		 01		|	None		|	Deallocate the current object. Always used in place of 
+				|				|	$FF, $00.
 		 02		|	2 bytes		|	Operand is a pointer to a subroutine in bank 2.
 				|				|	LABEL_6087 is pushed to the stack as the return address
 				|				|	for the sub. Animation continues as per LABEL_6087.
@@ -512,7 +517,7 @@ Bitfield at $D15E	-	Level viewport flags
 	  3	 | Level scrolling right        |                           
 	  4	 | VRAM update required for row | VRAM data is up-to-date.
 	  5	 | VRAM update required for col | VRAM data is up-to-date
-	  6	 |                              |
+	  6	 | Don't update cam pos         | Update cam pos this frame.
 	  7	 | Camera locked.               | Camera free.
 	-----+------------------------------+------------------------------------
 
@@ -584,9 +589,11 @@ Bitfield at $D504	-	Object sprite flags?
 
 	See subroutine at $17DF.
 
+	TODO: Check bit 6. Block fragment logic uses this as a deallocation trigger.
+
 	 Bit | Action when Set              | Action when Reset                   |
 	-----+------------------------------+-------------------------------------
-	  0	 |                              |                  
+	  0	 |  Deallocate object.          |                  
 	  1  |                              |                                    
 	  2	 |                              |
 	  3	 |                              |
