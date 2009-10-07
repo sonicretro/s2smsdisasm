@@ -219,7 +219,7 @@ WriteMirroredTileToVRAM:
 	ld   hl, $D300
 	ld   b, $20
 -:	ld   e, (hl)		;read a byte of tile data from RAM
-	ld   d, Data_TileMirroringValues >> 8
+	ld   d, Engine_Data_ByteFlipLUT >> 8
 	ld   a, (de)		;"flip" the byte by using it as an
 						;index into the array at $100 and
 						;retrieving the value

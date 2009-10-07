@@ -1,11 +1,11 @@
 ;===========================================================================
 ;		BANK 03 - 
-;			Unknown. 
+;			Sega PCM data.
 ;===========================================================================
 .BANK 3
 .ORG $0000
 
-.include "src\bank03.asm"
+.include "src/includes/bank03.asm"
 
 
 ;===========================================================================
@@ -16,7 +16,7 @@
 .ORG $0000
 Bank4:
 
-.include "src\includes\bank04.asm"
+.include "src/includes/bank04.asm"
 
 
 ;===========================================================================
@@ -27,7 +27,7 @@ Bank4:
 .ORG $0000
 Bank5:
 
-.include "src\includes\bank05.asm"
+.include "src/includes/bank05.asm"
 
 
 ;===========================================================================
@@ -39,7 +39,7 @@ Bank5:
 .ORG $0000
 Bank6:
 
-.include "src\includes\bank06.asm"
+.include "src/includes/bank06.asm"
 
 
 ;===========================================================================
@@ -50,7 +50,7 @@ Bank6:
 .ORG $0000
 Bank07:
 
-.include "src\includes\bank07.asm"
+.include "src/includes/bank07.asm"
 
 
 ;===========================================================================
@@ -62,7 +62,7 @@ Bank07:
 .ORG $0000
 Bank08:
 
-.include "src\includes\bank08.asm"
+.include "src/includes/bank08.asm"
 
 
 ;===========================================================================
@@ -74,7 +74,7 @@ Bank08:
 .ORG $0000
 Bank09:
 
-.include "src\includes\bank09.asm"
+.include "src/includes/bank09.asm"
 
 
 ;===========================================================================
@@ -85,7 +85,7 @@ Bank09:
 .ORG $0000
 Bank10:
 
-.include "src\includes\bank10.asm"
+.include "src/includes/bank10.asm"
 
 
 ;===========================================================================
@@ -96,7 +96,7 @@ Bank10:
 .ORG $0000
 Bank11:
 
-.include "src\includes\bank11.asm"
+.include "src/includes/bank11.asm"
 
 
 ;===========================================================================
@@ -107,7 +107,7 @@ Bank11:
 .ORG $0000
 Bank12:
 
-.include "src\includes\bank12.asm"
+.include "src/includes/bank12.asm"
 
 ;===========================================================================
 ;		BANK 13 - 
@@ -117,7 +117,7 @@ Bank12:
 .ORG $0000
 Bank13:
 
-.include "src\includes\bank13.asm"
+.include "src/includes/bank13.asm"
 
 
 ;===========================================================================
@@ -128,7 +128,7 @@ Bank13:
 .ORG $0000
 Bank14:
 
-.include "src\includes\bank14.asm"
+.include "src/includes/bank14.asm"
 
 
 ;===========================================================================
@@ -139,7 +139,7 @@ Bank14:
 .ORG $0000
 Bank15:
 
-.include "src\includes\bank15.asm"
+.include "src/includes/bank15.asm"
 
 
 ;===========================================================================
@@ -150,7 +150,7 @@ Bank15:
 .ORG $0000
 Bank16:
 
-.include "src\includes\bank16.asm"
+.include "src/includes/bank16.asm"
 
 
 ;===========================================================================
@@ -161,7 +161,7 @@ Bank16:
 .ORG $0000
 Bank17:
 
-.include "src\includes\bank17.asm"
+.include "src/includes/bank17.asm"
 
 
 ;===========================================================================
@@ -172,7 +172,7 @@ Bank17:
 .ORG $0000
 Bank18:
 
-.include "src\includes\bank18.asm"
+.include "src/includes/bank18.asm"
 
 
 ;===========================================================================
@@ -183,7 +183,7 @@ Bank18:
 .ORG $0000
 Bank19:
 
-.include "src\includes\bank19.asm"
+.include "src/includes/bank19.asm"
 
 
 ;===========================================================================
@@ -194,7 +194,7 @@ Bank19:
 .ORG $0000
 Bank20:
 
-.include "src\includes\bank20.asm"
+.include "src/includes/bank20.asm"
 
 ;===========================================================================
 ;		BANK 21 - 
@@ -204,7 +204,7 @@ Bank20:
 .ORG $0000
 Bank21:
 
-.include "src\includes\bank21.asm"
+.include "src/includes/bank21.asm"
 
 
 ;===========================================================================
@@ -215,7 +215,7 @@ Bank21:
 .ORG $0000
 Bank22:
 
-.include "src\includes\bank22.asm"
+.include "src/includes/bank22.asm"
 
 
 ;===========================================================================
@@ -226,7 +226,7 @@ Bank22:
 .ORG $0000
 Bank23:
 
-.include "src\includes\bank23.asm"
+.include "src/includes/bank23.asm"
 
 
 ;===========================================================================
@@ -237,7 +237,7 @@ Bank23:
 .ORG $0000
 Bank24:
 
-.include "src\includes\bank24.asm"
+.include "src/includes/bank24.asm"
 
 
 ;===========================================================================
@@ -248,7 +248,7 @@ Bank24:
 .ORG $0000
 Bank25:
 
-.include "src\includes\bank25.asm"
+.include "src/includes/bank25.asm"
 
 ;===========================================================================
 ;		BANK 26 - 
@@ -257,7 +257,7 @@ Bank25:
 .BANK 26
 .ORG $0000
 
-.include "src\includes\bank26.asm"
+.include "src/includes/bank26.asm"
 
 
 ;===========================================================================
@@ -268,7 +268,7 @@ Bank25:
 .BANK 27
 .ORG $0000
 
-.include "src\includes\bank27.asm"
+.include "src/includes/bank27.asm"
 
 
 ;===========================================================================
@@ -279,7 +279,7 @@ Bank25:
 .ORG $0000
 Bank28:
 
-.include "src\object_logic\bank28.asm"
+.include "src/object_logic/bank28.asm"
 
 
 ;===========================================================================
@@ -290,7 +290,7 @@ Bank28:
 .ORG $0000
 Bank29:
 
-.include "src\bank29.asm"
+.include "src/bank29.asm"
 
 
 ;===========================================================================
@@ -301,11 +301,11 @@ Bank29:
 .ORG $0000
 Bank30:
 
-.include "src\includes\bank30.asm"
+.include "src/includes/bank30.asm"
 
 ;===========================================================================
 .BANK 31
 .ORG $0000
 Bank31:
 
-.include "src\includes\bank31.asm"
+.include "src/includes/bank31.asm"

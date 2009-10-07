@@ -27,14 +27,18 @@ Structure at $D15E	-	level attributes
 ===============================================================================
 Miscellaneous Variables
 
-	$D12B			-	Copy of current bank number.
+    $D12A           -   Copy of current page number for frame 1.
+	$D12B			-	Copy of current page number for frame 2.
 	$D12C			-	Level Select flag
-	
+	$D12D           -   PAL/NTSC tv flag?
+    
 	$D12F			-	Frame counter.
 	
 	$D132			-	Palette reset trigger. When set copies the data at
 						$65A to VDP colour RAM. See subroutine at $5B2.
-	
+
+    $D134           -   SAT update trigger.
+
 	$D15E -> $D16F	-	Level attributes (see above).
 	
 	$D172			-	VDP vert. scroll working copy
@@ -82,14 +86,14 @@ Miscellaneous Variables
 						the specified threshold (defaults to $3C) the level
 						time is incremented.
 
-	$D2D2 -> $D2D3	-	Address of next controller byte for demo sequences.
-	
+	$D2C7           -   Tile attribute byte to use when copying char data 
+                        to VRAM. Used by VDP_DrawText.
+    
 	$D2CA -> $D2CB	-	Initial screen x pos for current level/act
 	$D2CC -> $D2CD	-	Initial screen y pos for current level/act
 	$D2CE -> $D2CF	-	Camera horizontal lock position?
 	$D2D0 -> $D2D1	-	Camera vertical lock position?
-	
-	
+	$D2D2 -> $D2D3	-	Address of next controller byte for demo sequences.
 	$D2D4 -> $D2D5	-	Pointer to collision data
 	$D2D6			-	Update object layout trigger. Incremented each frame.
 						Causes an object layout update to take place every
@@ -179,7 +183,8 @@ Miscellaneous Variables
 	$D4A2			-	Boss flag? 
 						Set by UGZ3 boss cannonball during state 0.
 						Set by SHZ3 boss (big bird) during state 0.
-	
+	$D4A3           -   "Palette update only" flag. When set, only updates VDP CRAM
+                        during the vblank interrupt.
 	$D4A4			-	Level water-level. When the player Y-pos value is below this
 						the "UnderWater" flag ($D467) is set and the air timer begins.
 
@@ -266,11 +271,23 @@ Object Descriptor Structure
 ===============================================================================
 Sound Channel Structure
 
-		$02					-	Tone duration counter?
-		$03 -> $04			-	Pointer to tone value
+		$00					-	Channel control.
+		$01					-	Channel number.
+		$02                 -   Used as a multiplier value @ $843E
+		$03 -> $04			-	Pointer to next command
+		$05					-	Tone adjustment value.
+		$06					-	Volume adjustment value?
 		
 		$08					-	Volume change trigger.
-		
+		$09					-	Channel stack pointer. Each channel has a
+								simple empty descending stack starting at
+								ix + $25.
+		$0A					-	Tone duration counter.
+		$0B -> $0C			-	Tone data.
+		$0D					-	Working copy of tone duration counter.
+
+		$25					-	Tote adjustment value. Added to any tone data
+								before writing to the PSG channel.
 
 
 ===============================================================================

@@ -26,3 +26,19 @@
 	SourceAddress	dw
 	LineCount		db		;LineCount = TileCount/2 (two tiles are copied for each line).
 .ENDST
+
+
+.STRUCT LevelDescriptor
+	ViewportFlags	db
+	unknown_01		db
+	MetaTileAtTop	db
+	MetaTileAtLeft	db
+	MetaTileBank	db
+	LayoutBank		db
+	MetaTileAddr	dw
+	LayoutAddr		dw
+	StrideTable		dw
+	WidthNeg		dw
+	Width			dw
+	DataOffset		dw
+.ENDST

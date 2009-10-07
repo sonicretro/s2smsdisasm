@@ -10,13 +10,13 @@ LABEL_A2C:
 	call LevelSelect_LoadFont
     call Engine_ClearLevelAttributes
     call Engine_ClearWorkingVRAM
-    call Engine_ClearScreen
+    call VDP_ClearScreen
     ld   a, $01					;tile attributes
     ld   ($D2C7), a
     ld   hl, $3808				;VRAM destination
     ld   de, LevelSelect_Title	;source data
     ld   bc, LevelSelect_DrawEntry1 - LevelSelect_Title	;char count
-    call DrawText
+    call VDP_DrawText
 	jr   LevelSelect_DrawEntry1
 
 LevelSelect_Title:
@@ -28,7 +28,7 @@ LevelSelect_DrawEntry1:
 	ld   hl, $3888
 	ld   de, LevelSelect_Entry1
 	ld   bc, LevelSelect_DrawEntry2 - LevelSelect_Entry1
-	call DrawText
+	call VDP_DrawText
 	jr   LevelSelect_DrawEntry2
 
 LevelSelect_Entry1:
@@ -40,7 +40,7 @@ LevelSelect_DrawEntry2:
 	ld   hl, $38C8
 	ld   de, LevelSelect_Entry2
 	ld   bc, LevelSelect_DrawEntry3 - LevelSelect_Entry2
-	call DrawText
+	call VDP_DrawText
 	jr   LevelSelect_DrawEntry3
 	
 LevelSelect_Entry2:
@@ -52,7 +52,7 @@ LevelSelect_DrawEntry3:
 	ld   hl, $3908
 	ld   de, LevelSelect_Entry3
 	ld   bc, LevelSelect_DrawEntry4 - LevelSelect_Entry3
-	call DrawText
+	call VDP_DrawText
 	jr   LevelSelect_DrawEntry4
 	
 LevelSelect_Entry3:
@@ -64,7 +64,7 @@ LevelSelect_DrawEntry4:
 	ld   hl, $3948
 	ld   de, LevelSelect_Entry4
 	ld   bc, LevelSelect_DrawEntry5 - LevelSelect_Entry4
-	call DrawText
+	call VDP_DrawText
 	jr   LevelSelect_DrawEntry5
 	
 LevelSelect_Entry4:
@@ -76,7 +76,7 @@ LevelSelect_DrawEntry5:
 	ld   hl, $3988
 	ld   de, LevelSelect_Entry5
 	ld   bc, LevelSelect_DrawEntry6 - LevelSelect_Entry5
-	call DrawText
+	call VDP_DrawText
 	jr   LevelSelect_DrawEntry6
 	
 LevelSelect_Entry5:
@@ -88,7 +88,7 @@ LevelSelect_DrawEntry6:
 	ld   hl, $39C8
 	ld   de, LevelSelect_Entry6
 	ld   bc, LevelSelect_DrawEntry7 - LevelSelect_Entry6
-	call DrawText
+	call VDP_DrawText
 	jr   LevelSelect_DrawEntry7
 
 LevelSelect_Entry6:
@@ -100,7 +100,7 @@ LevelSelect_DrawEntry7
 	ld   hl, $3A08
 	ld   de, LevelSelect_Entry7
 	ld   bc, LevelSelect_DrawEntry8 - LevelSelect_Entry7
-	call DrawText
+	call VDP_DrawText
 	jr   LevelSelect_DrawEntry8
 
 LevelSelect_Entry7:
@@ -112,7 +112,7 @@ LevelSelect_DrawEntry8:
 	ld   hl, $3A48
 	ld   de, LevelSelect_Entry8
 	ld   bc, LevelSelect_DrawEntry9 - LevelSelect_Entry8
-	call DrawText
+	call VDP_DrawText
 	jr   LevelSelect_DrawEntry9
 
 LevelSelect_Entry8:
@@ -124,7 +124,7 @@ LevelSelect_DrawEntry9:
 	ld   hl, $3A88
 	ld   de, LevelSelect_Entry9
 	ld   bc, LevelSelect_DrawEntry10 - LevelSelect_Entry9
-	call DrawText
+	call VDP_DrawText
 	jr   LevelSelect_DrawEntry10
 
 LevelSelect_Entry9:
@@ -136,7 +136,7 @@ LevelSelect_DrawEntry10:
 	ld   hl, $3AC8
 	ld   de, LevelSelect_Entry10
 	ld   bc, LevelSelect_DrawEntry11 - LevelSelect_Entry10
-	call DrawText
+	call VDP_DrawText
 	jr   LevelSelect_DrawEntry11
 	
 LevelSelect_Entry10:
@@ -148,7 +148,7 @@ LevelSelect_DrawEntry11:
 	ld   hl, $3B08
 	ld   de, LevelSelect_Entry11
 	ld   bc, LevelSelect_DrawEntry12 - LevelSelect_Entry11
-	call DrawText
+	call VDP_DrawText
 	jr   LevelSelect_DrawEntry12
 	
 LevelSelect_Entry11:
@@ -160,7 +160,7 @@ LevelSelect_DrawEntry12:
 	ld   hl, $3B48
 	ld   de, LevelSelect_Entry12
 	ld   bc, LevelSelect_DrawEntry13 - LevelSelect_Entry12
-	call DrawText
+	call VDP_DrawText
 	jr   LevelSelect_DrawEntry13
 
 LevelSelect_Entry12:
@@ -172,7 +172,7 @@ LevelSelect_DrawEntry13:
 	ld   hl, $3B88
 	ld   de, LevelSelect_Entry13
 	ld   bc, LevelSelect_DrawEntry14 - LevelSelect_Entry13
-	call DrawText
+	call VDP_DrawText
 	jr   LevelSelect_DrawEntry14
 	
 LevelSelect_Entry13;
@@ -184,7 +184,7 @@ LevelSelect_DrawEntry14:
 	ld   hl, $3BC8
 	ld   de, LevelSelect_Entry14
 	ld   bc, LevelSelect_DrawEntry15 - LevelSelect_Entry14
-	call DrawText
+	call VDP_DrawText
 	jr   LevelSelect_DrawEntry15
 	
 LevelSelect_Entry14:
@@ -196,7 +196,7 @@ LevelSelect_DrawEntry15:
 	ld   hl, $3C08
 	ld   de, LevelSelect_Entry15
 	ld   bc, LevelSelect_DrawEntry16 - LevelSelect_Entry15
-	call DrawText
+	call VDP_DrawText
 	jr   LevelSelect_DrawEntry16
 	
 LevelSelect_Entry15:
@@ -208,7 +208,7 @@ LevelSelect_DrawEntry16:
 	ld   hl, $3C48
 	ld   de, LevelSelect_Entry16
 	ld   bc, LevelSelect_DrawEntry17 - LevelSelect_Entry16
-	call DrawText
+	call VDP_DrawText
 	jr   LevelSelect_DrawEntry17
 	
 LevelSelect_Entry16:
@@ -220,7 +220,7 @@ LevelSelect_DrawEntry17:
 	ld   hl, $3C88
 	ld   de, LevelSelect_Entry17
 	ld   bc, LevelSelect_DrawEntry18 - LevelSelect_Entry17
-	call DrawText
+	call VDP_DrawText
 	jr   LevelSelect_DrawEntry18
 	
 LevelSelect_Entry17:
@@ -232,7 +232,7 @@ LevelSelect_DrawEntry18:
 	ld   hl, $3CC8
 	ld   de, LevelSelect_Entry18
 	ld   bc, LevelSelect_DrawEntry19 - LevelSelect_Entry18
-	call DrawText
+	call VDP_DrawText
 	jr   LevelSelect_DrawEntry19
 	
 LevelSelect_Entry18:
@@ -244,7 +244,7 @@ LevelSelect_DrawEntry19:
 	ld   hl, $3D08
 	ld   de, LevelSelect_Entry19
 	ld   bc, LevelSelect_DrawEntry20 - LevelSelect_Entry19
-	call DrawText
+	call VDP_DrawText
 	jr   LevelSelect_DrawEntry20
 
 LevelSelect_Entry19:
@@ -256,7 +256,7 @@ LevelSelect_DrawEntry20:
 	ld   hl, $3D48
 	ld   de, LevelSelect_Entry20
 	ld   bc, LevelSelect_DrawEntry21 - LevelSelect_Entry20
-	call DrawText
+	call VDP_DrawText
 	jr   LevelSelect_DrawEntry21
 
 LevelSelect_Entry20:
@@ -268,7 +268,7 @@ LevelSelect_DrawEntry21:
 	ld   hl, $3D88
 	ld   de, LevelSelect_Entry21
 	ld   bc, LevelSelect_DrawEntry22 - LevelSelect_Entry21
-	call DrawText
+	call VDP_DrawText
 	jr   LevelSelect_DrawEntry22
 	
 LevelSelect_Entry21:

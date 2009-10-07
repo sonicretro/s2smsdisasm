@@ -1,8 +1,11 @@
-.include	"src\includes\structures.asm"
-.include	"src\includes\objects.asm"				;values for objects
-.include	"src\includes\player_states.asm"		;values for player object state
-.include	"src\includes\sound_values.asm"			;values for music/sfx
-
+.include   "src/includes/sms.asm"
+.include	"src/includes/structures.asm"
+.include	"src/includes/objects.asm"				;values for objects
+.include	"src/includes/player_states.asm"		;values for player object state
+.include	"src/includes/sound_values.asm"			;values for music/sfx
+.include	"src/includes/level_values.asm"
+.include	"src/includes/macros.asm"
+.include	"src/includes/memory_layout.asm"
 
 ;=====================================================================
 ;Changing the "Version" variable will determine which version
@@ -68,7 +71,7 @@
 .def BgPaletteIndex			$D4E7	;Current background palette (index into array of palettes)
 .def FgPaletteControl		$D4E8	;Triggers foreground palette fades (bit 6 = to black, bit 7 = to colour).
 .def FgPaletteIndex			$D4E9	;Current foreground palette (index into array of palettes)
-.def PaletteUpdatePending	$D4EA	;Will trigger a CRAM update when set
+
 
 .def CurrentMusicTrack		$DD03
 .def NextMusicTrack			$DD04	;Write bytes here to play music/sfx
@@ -83,24 +86,32 @@
 .def VDPRegister4			$D122
 .def VDPRegister5			$D123
 .def VDPRegister6			$D124
-.def SATUpdateRequired		$D134	;Causes the SAT to be udpated when set.
+
 .def WorkingCRAM			$D4C6	;copy of Colour RAM maintained in work RAM.
 
 .def LastLevel				$07
 .def LastBankNumber			$1F
 
 .MEMORYMAP
-SLOTSIZE $4000
+SLOTSIZE $7FF0
 SLOT 0 $0000
-SLOT 1 $4000
+SLOTSIZE $0010
+SLOT 1 $7FF0
+SLOTSIZE $4000
 SLOT 2 $8000
+SLOTSIZE $2000
+SLOT 3 $C000
 DEFAULTSLOT 2
 .ENDME
 
 .ROMBANKMAP
 BANKSTOTAL 32
+BANKSIZE $7FF0
+BANKS 1
+BANKSIZE $0010
+BANKS 1
 BANKSIZE $4000
-BANKS 32
+BANKS 30
 .ENDRO
 
 .EMPTYFILL $FF
@@ -124,12 +135,14 @@ _START:
 	;set page-2 to ROM bank-2
 	inc		a
 	ld		($FFFF), a
-_RST_18H:
-	;read current scanline
-	in		a, ($7E)
+    
+    ; wait for the VDP
+-:	;read current scanline
+	in		a, (Ports_VDP_VCounter)
 	;wait for scanline to = 176
 	cp		$B0
-	jr		nz, _RST_18H
+	jr		nz, -
+    
 	;Clear a work ram ($C001 to $DFEF)
 	ld		hl, $C001
 	ld		de, $C002
@@ -137,27 +150,59 @@ _RST_18H:
 	ld		(hl), $00
 	ldir
 	
-	ld		a, $01
-	ld		($D12A), a
-	ld		a, $02
-	ld		($D12B), a
-	jp		LABEL_457_3
+    ; initialise the frame page variables
+	ld		a, $01      ; bank 01 in frame 01
+	ld		(Frame1Page), a
+	ld		a, $02      ; bank 02 in frame 02
+	ld		(Frame2Page), a
+	jp		Engine_Initialise
 
-_IRQ_HANDLER:
-_INT_38H:
+
+; =============================================================================
+; Engine_Interrupt()
+; -----------------------------------------------------------------------------
+;  Maskable interrupt handler. Determines the interrupt type and despatches to 
+;  the correct handler.
+; -----------------------------------------------------------------------------
+;  In:
+;    None.
+;  Out:
+;    None.
+; -----------------------------------------------------------------------------
+Engine_Interrupt:
 	di
 	push	af
-	in		a, ($BF)
-	rlca					;is frame interrupt pending?
-	jp		c, LABEL_4A5_57		;jump if yes
+    ; read the VDP status to determine the type of interrupt
+	in		a, (Ports_VDP_Control)
+	rlca
+    ; jump if this is a V-blank interrupt
+	jp		c, Engine_HandleVBlank
+    ; the interrupt was caused by a h-blank.
+    ; turn off hblank interrupts
 	jp		VDP_ResetPalette_DisableLineInterrupt		
 
+
 ;just padding?
-.db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-.db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+.rept 32
+    .db 0
+.endr
+
 .db $00, $02, $00
 
-_NMI_HANDLER:
+
+; =============================================================================
+; Engine_NMI()
+; -----------------------------------------------------------------------------
+;  Non-Maskable interrupt handler. Stub function that immediately calls the 
+;  pause handler.
+; -----------------------------------------------------------------------------
+;  In:
+;    None.
+;  Out:
+;    None.
+; -----------------------------------------------------------------------------
+.org $0066
+Engine_NMI:
 	jp		_Pause_Handler
 
 
@@ -166,19 +211,31 @@ LABEL_69:
 .db $00, $00, $00, $00, $00, $00, $00, $32, $00, $00
 
 
-ErrorTrap:	  ;$0073
-	call	Engine_ClearScreen
+; =============================================================================
+; Engine_ErrorTrap()
+; -----------------------------------------------------------------------------
+;  Error handler function that quickly scribbles some text to VRAM before 
+;  jumping to 0.
+; -----------------------------------------------------------------------------
+;  In:
+;    None.
+;  Out:
+;    None.
+; -----------------------------------------------------------------------------
+Engine_ErrorTrap:	  ;$0073
+	call	VDP_ClearScreen
 	ld		a, $01
-	ld		($D2C7), a
+	ld		(VDP_DefaultTileAttribs), a
 	ld		hl, $3A4C	   ;scribble to this vram address
 	ld		de, _error_msg
 	ld		bc, $0005
-	call	DrawText
+	call	VDP_DrawText
 	jr		+
 
 _error_msg:
 .db "ERROR"
 
+    ; hang for 180 frames
 +:  ld	  b, $B4
 -:  ei
 	halt
@@ -186,9 +243,9 @@ _error_msg:
 	jp		$0000
 
 
-.db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-.db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-.db $00, $00, $00, $00, $00, $00, $00, $00, $00
+.rept 41
+    .db $00
+.endr
 
 
 .db "MS SONIC", $A5, "THE", $A5, "HEDGEHOG.2 "
@@ -200,207 +257,25 @@ _error_msg:
 .db " SEGA /Aspect Co.,Ltd "
 
 
-;****************************************************************
-;*  The following table serves as a lookup table that is used   *
-;*  by tile loading routines to mirror tiles horizontally on	*
-;*  the-fly. Each byte represents the mirrored data for each	*
-;*  possible byte of tile data. For example, if the byte of	 *
-;*  tile data was $D6 (1101 0110 in binary), its mirrored value *
-;*  would be $6B (0110 1011 in binary).						 *
-;*  This array needs to be aligned to a $100 byte boundary in   *
-;*  order for the addressing mechanism to work properly.		*
-;****************************************************************
-Data_TileMirroringValues:	   ;$0100
-.db $00, $80, $40, $C0, $20, $A0, $60, $E0
-.db $10, $90, $50, $D0, $30, $B0, $70, $F0
-.db $08, $88, $48, $C8, $28, $A8, $68, $E8
-.db $18, $98, $58, $D8, $38, $B8, $78, $F8
-.db $04, $84, $44, $C4, $24, $A4, $64, $E4
-.db $14, $94, $54, $D4, $34, $B4, $74, $F4
-.db $0C, $8C, $4C, $CC, $2C, $AC, $6C, $EC
-.db $1C, $9C, $5C, $DC, $3C, $BC, $7C, $FC
-.db $02, $82, $42, $C2, $22, $A2, $62, $E2
-.db $12, $92, $52, $D2, $32, $B2, $72, $F2
-.db $0A, $8A, $4A, $CA, $2A, $AA, $6A, $EA
-.db $1A, $9A, $5A, $DA, $3A, $BA, $7A, $FA
-.db $06, $86, $46, $C6, $26, $A6, $66, $E6
-.db $16, $96, $56, $D6, $36, $B6, $76, $F6
-.db $0E, $8E, $4E, $CE, $2E, $AE, $6E, $EE
-.db $1E, $9E, $5E, $DE, $3E, $BE, $7E, $FE
-.db $01, $81, $41, $C1, $21, $A1, $61, $E1
-.db $11, $91, $51, $D1, $31, $B1, $71, $F1
-.db $09, $89, $49, $C9, $29, $A9, $69, $E9
-.db $19, $99, $59, $D9, $39, $B9, $79, $F9
-.db $05, $85, $45, $C5, $25, $A5, $65, $E5
-.db $15, $95, $55, $D5, $35, $B5, $75, $F5
-.db $0D, $8D, $4D, $CD, $2D, $AD, $6D, $ED
-.db $1D, $9D, $5D, $DD, $3D, $BD, $7D, $FD
-.db $03, $83, $43, $C3, $23, $A3, $63, $E3
-.db $13, $93, $53, $D3, $33, $B3, $73, $F3
-.db $0B, $8B, $4B, $CB, $2B, $AB, $6B, $EB
-.db $1B, $9B, $5B, $DB, $3B, $BB, $7B, $FB
-.db $07, $87, $47, $C7, $27, $A7, $67, $E7
-.db $17, $97, $57, $D7, $37, $B7, $77, $F7
-.db $0F, $8F, $4F, $CF, $2F, $AF, $6F, $EF
-.db $1F, $9F, $5F, $DF, $3F, $BF, $7F, $FF
+; =============================================================================
+;  Tile Mirroring Lookup Table
+; -----------------------------------------------------------------------------
+.include "src/byte_flip_lut.asm"
 
-;************************************************************
-;*  Main logic vtable - used extensively by object logic	*
-;************************************************************
-LABEL_200:
-VF_Engine_AllocateObjectHighPriority:				;$200 - find an available object slot from $D540 onwards
-	jp		Engine_AllocateObjectHighPriority						   
-VF_Engine_AllocateObjectLowPriority:				;$203 - find an available object slot from $D700 onwards
-	jp		Engine_AllocateObjectLowPriority
-VF_Engine_DeallocateObject:							;$206
-	jp		Engine_DeallocateObject
-VF_Engine_MoveObjectToPlayer:						;$209
-	jp		Engine_MoveObjectToPlayer
-VF_Logic_CheckDestroyObject:						;$20C
-	jp		Logic_CheckDestroyObject
-VF_Engine_SetObjectVerticalSpeed:
-	jp		Engine_SetObjectVerticalSpeed			;$20F
-	jp		LABEL_631A								;$212
-	jp		LABEL_6344								;$215
-VF_Engine_CheckCollisionAndAdjustPlayer:			;$218
-	jp		Engine_CheckCollisionAndAdjustPlayer
-	jp		LABEL_6355								;$21B
-	jp		LABEL_635B								;$21E
-	jp		LABEL_63A9								;$221
-	jp		LABEL_63C0								;$224
-VF_Engine_AdjustPlayerAfterCollision:				;$227
-	jp		Engine_AdjustPlayerAfterCollision
-VF_DoNothing:										;$22A
-	jp		DoNothingStub
-	jp		LABEL_64B1								;$22D
-VF_Engine_GetObjectIndexFromPointer:				;$230
-	jp		Engine_GetObjectIndexFromPointer
-VF_Engine_GetObjectDescriptorPointer:				;$233
-	jp		Engine_GetObjectDescriptorPointer
-	jp		LABEL_64D4								;$236
-	jp		LABEL_6544								;$239
-VF_Logic_UpdateObjectDirectionFlag					;$23C
-	jp		Logic_UpdateObjectDirectionFlag
-VF_Logic_ChangeDirectionTowardsPlayer:				;$23F
-	jp		Logic_ChangeDirectionTowardsPlayer
-VF_Logic_ChangeDirectionTowardsObject:				;$242
-	jp		Logic_ChangeDirectionTowardsObject
-VF_Logic_MoveHorizontalTowardsPlayerAt0400			;$245
-	jp		Logic_MoveHorizontalTowardsPlayerAt0400
-VF_Logic_MoveHorizontalTowardsObject:				;$248
-	jp		Logic_MoveHorizontalTowardsObject
-VF_Logic_MoveVerticalTowardsObject:					;$24B
-	jp		Logic_MoveVerticalTowardsObject
-	jp		LABEL_67EC								;$24E
-	jp		LABEL_67F1								;$251
-	jp		LABEL_67F6								;$254
-VF_Engine_UpdateObjectPosition:
-	jp		Engine_UpdateObjectPosition				;$257
-VF_Engine_CheckCollision:
-	jp		Engine_CheckCollision					;$25A
-VF_Engine_DisplayExplosionObject:
-	jp		Engine_DisplayExplosionObject			;$25D
-	jp		LABEL_75C5								;$260
-VF_Engine_GetCollisionValueForBlock:
-	jp		Engine_GetCollisionValueForBlock		;$263 - collide with background tiles
-	jp		LABEL_2FCB								;$266
-VF_Player_HandleStanding:
-	jp		Player_HandleStanding					;$269
-VF_Engine_IncrementRingCounter:
-	jp		IncrementRingCounter					;$26C
-VF_Player_CalculateLoopFrame:						;$26F
-	jp		Player_CalculateLoopFrame
-VF_Player_CalculateLoopFallFrame:					;$272
-	jp		Player_CalculateLoopFallFrame
-	jp		LABEL_49B0								;$275
-VF_Engine_ReleaseCamera:
-	jp		Engine_ReleaseCamera					;$278
-VF_Player_PlayHurtAnimation:
-	jp		Player_PlayHurtAnimation				;$27B
-	jp		LABEL_4037								;$27E
-	jp		LABEL_46BB								;$281
-VF_Player_HandleVerticalSpring:
-	jp		Player_HandleVerticalSpring				;$284
-	jp		LABEL_34DA								;$287
-	jp		LABEL_3484								;$28A
-VF_Player_HandleFalling:
-	jp		Player_HandleFalling					;$28D
-	jp		LABEL_41DD								;$290
-	jp		LABEL_40D6								;$293
-	jp		LABEL_408E								;$296
-	jp		LABEL_4199								;$299
-	jp		LABEL_40B2								;$29C
-VF_Player_HandleJumping:
-	jp		Player_HandleJumping					;$29F
-	jp		LABEL_424A								;$2A2
-	jp		LABEL_343E								;$2A5
-VF_Player_HandleCrouched:
-	jp		Player_HandleCrouched					;$2A8
-VF_Player_HandleLookUp:
-	jp		Player_HandleLookUp						;$2AB
-	jp		LABEL_438A								;$2AE
-VF_Player_HandleRolling:
-	jp		Player_HandleRolling					;$2B1
-	jp		LABEL_359B								;$2B4 - loop motion
-VF_Player_SetState_MoveBack:						;$2B7
-	jp		Player_SetState_MoveBack
-VF_Player_HandleRunning:
-	jp		Player_HandleRunning					;$2BA
-	jp		LABEL_34FD								;$2BD
-	jp		LABEL_3467								;$2C0
-VF_Player_HandleIdle:
-	jp		Player_HandleIdle						;$2C3
-	jp		LABEL_375E								;$2C6
-	jp		LABEL_375F								;$2C9
-VF_Player_HandleSkidRight:
-	jp		Player_HandleSkidRight					;$2CC
-VF_Player_HandleSkidLeft:
-	jp		Player_HandleSkidLeft					;$2CF
-	jp		LABEL_46C0								;$2D2
-	jp		LABEL_46EA								;$2D5
-VF_Player_HandleWalk:
-	jp		Player_HandleWalk						;$2D8
-	jp		Player_MineCart_Handle					;$2DB
-VF_UpdateCyclingPalette_ScrollingText:				;$2DE
-	jp		UpdateCyclingPalette_ScrollingText
-	jp		LABEL_33B7								;$2E1
-VF_Engine_CreateBlockFragmentObjects
-	jp		Engine_CreateBlockFragmentObjects		;$2E4 - spawn the 4 block fragment objects
-	jp		LABEL_348F								;$2E7
-	jp		LABEL_34A4								;$2EA - collide with air bubble - reset air timer.
-	jp		LABEL_20FB								;$2ED
-VF_Player_HandleBalance:							;$2F0
-	jp		Player_HandleBalance
-	jp		LABEL_49CF								;$2F3
-VF_Engine_SetCameraAndLock:							;$2F6
-	jp		Engine_SetCameraAndLock
-VF_Logic_ChangeFrameDisplayTime:					;$2F9 - change frame display time based on speed
-	jp		Logic_ChangeFrameDisplayTime
-VF_Player_CalculateBalanceOnObject:					;$2FC
-	jp		Player_CalculateBalanceOnObject
-	jp		LABEL_34A9								;$2FF
-VF_Engine_SetMinimumCameraX:
-	jp		Engine_SetMinimumCameraX				;$302
-VF_Engine_SetMaximumCameraX:
-	jp		Engine_SetMaximumCameraX				;$305
-	jp		LABEL_34E1								;$308
-	jp		LABEL_25AC								;$30B
-VF_Engine_UpdateRingCounterSprites:					;$30E
-	jp		Engine_UpdateRingCounterSprites			;$30E
-VF_Engine_RemoveBreakableBlock:						;$311
-	jp		Engine_RemoveBreakableBlock
-VF_Engine_ChangeLevelMusic:
-	jp		Engine_ChangeLevelMusic					;$314
-VF_Score_AddBadnikValue:
-	jp		Score_AddBadnikValue					;$317
-VF_Score_AddBossValue:
-	jp		Score_AddBossValue						;$31A
-	jp		LABEL_1CC4								;$31D
-	jp		LABEL_1CCA								;$320
 
-.db $00, $00, $00, $00, $00, $00
-.db $00, $00, $00, $00, $00, $00, $00 
+; =============================================================================
+;  Object Logic Jump Table
+; -----------------------------------------------------------------------------
+.include "src/logic_jump_table.asm"
 
+
+
+.rept 13
+    .db $00
+.endr
+
+
+.org $0330
 DATA_330:
 .db $00, $03, $06, $09, $0C, $0F, $12, $15
 .db $19, $1C, $1F, $22, $25, $28, $2B, $2E
@@ -440,17 +315,32 @@ DATA_330:
 .db $00
 
 
-Start:
-LABEL_431_86:
+; =============================================================================
+;  Engine_Reset()
+; -----------------------------------------------------------------------------
+;  Soft reset. Executed if the reset button is pressed.
+; -----------------------------------------------------------------------------
+;  In:
+;    None.
+;  Out:
+;    None.
+; -----------------------------------------------------------------------------
+Engine_Reset:       ; $0431
 	di
-	ld		sp, $DFF0
-	call	VDP_SetMode2
-	ld		hl, $C001		  ;clear work RAM
+	; reset the stack pointer
+    ld		sp, $DFF0
+    
+    ; init the VDP
+	call	VDP_SetMode2Reg_DisplayOff
+    
+    ; initialise work RAM
+	ld		hl, $C001
 	ld		de, $C002
 	ld		bc, $1FEE
 	ld		(hl), $00
 	ldir
-	;setup default paging
+    
+	; reset the paging registers
 	ld		a, $00
 	ld		($FFFC), a
 	ld		a, $00
@@ -459,17 +349,30 @@ LABEL_431_86:
 	ld		($FFFE), a
 	inc		a
 	ld		($FFFF), a
-LABEL_457_3:
-	call	LABEL_12A3_4	   ;possibly wait for vblank routine
-	call	Sound_ResetChannels
-	call	Initialise_VDP_Registers
+    ; FALL THROUGH
+
+
+; =============================================================================
+;  Engine_Initialise()
+; -----------------------------------------------------------------------------
+;  Initialises the hardware.
+; -----------------------------------------------------------------------------
+;  In:
+;    None.
+;  Out:
+;    None.
+; -----------------------------------------------------------------------------
+Engine_Initialise:
+	call	LABEL_12A3_4	   ; VDP region/tv detection?
+	call	Sound_InitPSG
+	call	VDP_InitRegisters
 	;clear screen?
 	call	ClearPaletteRAM
 	call	ClearVRAM
 	call	Engine_LoadLevelTiles
 	call	LevelSelectCheck
-	call	EnableFrameInterrupt
-	call	SetDisplayVisible
+	call	VDP_EnableFrameInterrupt
+	call	VDP_SetMode2Reg_DisplayOn
 LABEL_472:
 	ld		hl, $D292
 	set		6, (hl)
@@ -477,7 +380,7 @@ LABEL_472:
 	ld		($D2C8), a
 	call	ChangeGameMode
 	di
-	call	Engine_ClearScreen
+	call	VDP_ClearScreen
 	call	Engine_ClearWorkingVRAM
 	xor		a
 	ld		($D292), a
@@ -502,9 +405,20 @@ LevelSelectCheck:
 	ld		($D12C), a
 	ret
 
-;Main game loop
-_VSyncInterrupt:
-LABEL_4A5_57:
+
+; =============================================================================
+;  Engine_HandleVBlank()
+; -----------------------------------------------------------------------------
+;  V-Blank interrupt handler.
+; -----------------------------------------------------------------------------
+;  In:
+;    None.
+;  Out:
+;    None.
+; -----------------------------------------------------------------------------
+Engine_HandleVBlank:        ; $04A5
+; -------------------------------------
+;  V-blank Prologue
 	ex		af, af'
 	push	af
 	push	bc
@@ -516,16 +430,19 @@ LABEL_4A5_57:
 	push	hl
 	push	ix
 	push	iy
-	
-	ld		a, ($D4A3)			;only updates palettes
+; -------------------------------------
+
+    ; if this trigger is set we should update VDP colour RAM
+    ; and nothing else
+	ld		a, (UpdatePalettesOnly)
 	or		a
-	jp		nz, LABEL_58D_61
+	jp		nz, Engine_HandleVBlank_PalettesOnly
 	
 	ld		a, ($D136)			;Only allows sound driver to update
 	or		a
-	jp		nz, LABEL_55D_62
+	jp		nz, Engine_HandleVBlank_UpdateSound
 	
-	call	VDP_SetMode2		;update VDP mode control register 2
+	call	VDP_SetMode2Reg_DisplayOff		;update VDP mode control register 2
 	
 	ld		bc, $0000
 	ld		a, ($D290)			;do we need to adjust the background scroll values?
@@ -576,28 +493,30 @@ LABEL_4A5_57:
 	ld		hl, ($D286)
 	ld		($D176), hl
 
-+:	call	Engine_UpdateSAT
++:	call	VDP_UpdateSAT
 	call	Engine_AnimateRingArt
-	call	SetDisplayVisible
-	call	_WriteToPaletteRAM
+	call	VDP_SetMode2Reg_DisplayOn
+	call	Engine_CopyPalettes
 	call	ReadInput
 	call	Engine_LoadPlayerTiles
 	
 	ld		a, (GameState)
 	bit		1, a				;check whether game is paused
-	jr		nz, LABEL_55D_62
+	jr		nz, Engine_HandleVBlank_UpdateSound
 	
 	;load ROM bank-9 into page-2 and call the palette update code
-	ld		a, :Bank09
+	ld		a, :Palette_Update
 	ld		($FFFF), a
 	call	Palette_Update
 	
 	ld		a, (GameState)
 	bit		6, a
-	jr		z, LABEL_55D_62
+	jr		z, Engine_HandleVBlank_UpdateSound
+
 	ld		a, (GameState)
 	bit		2, a
-	jr		nz, LABEL_55D_62
+	jr		nz, Engine_HandleVBlank_UpdateSound
+
 	ld		a, :Bank31
 	ld		($FFFF), a
 	call	Engine_UpdateSpriteAttribs
@@ -605,11 +524,12 @@ LABEL_4A5_57:
 	ld		a, :Bank30				  ;page in the bank with the cycling palette data
 	ld		($FFFF), a
 	call	Engine_UpdateCyclingPalettes
-LABEL_55D_62:
-	;load ROM bank-2 into page-2
-	ld		a, :Bank2
+
+Engine_HandleVBlank_UpdateSound:        ; $055D
+	ld		a, :Sound_Update
 	ld		($FFFF), a
-	call	LABEL_8000_92
+	call	Sound_Update
+    
 	ld		a, ($D292)
 	or		a
 	call	nz, LABEL_59E_218
@@ -619,10 +539,13 @@ LABEL_55D_62:
 	ld		hl, $D12F		;increment the frame counter
 	inc		(hl)
 	
-	ld		a, ($D12B)
+	ld		a, (Frame2Page)
 	ld		($FFFF), a
 	ld		hl, $D135	   ;pause timer
 	inc		(hl)
+
+; -------------------------------------
+; VBlank Epilogue
 	pop		iy
 	pop		ix
 	pop		hl
@@ -636,18 +559,19 @@ LABEL_55D_62:
 	ex		af, af'
 	pop		af
 	ei
+; -------------------------------------
 	ret
 
-LABEL_58D_61:
-	call	_WriteToPaletteRAM
-	jp		LABEL_55D_62
+Engine_HandleVBlank_PalettesOnly:       ; $058D
+	call	Engine_CopyPalettes
+	jp		Engine_HandleVBlank_UpdateSound
 
 
 WaitForInterrupt:
 LABEL_593:
 	ei
 	ld		hl, $D135
--:  ld   a, (hl)
+-:  ld		a, (hl)
 	or		a
 	jr		z, -
 	ld		(hl), $00
@@ -706,7 +630,7 @@ VDP_ResetPalette_DisableLineInterrupt:	;$5B2
 	nop
 .ENDR
 
-	ld		(PaletteUpdatePending), a
+	ld		(Palette_UpdateTrig), a
 
 ++:	pop		hl
 	pop		af
@@ -821,7 +745,7 @@ LABEL_72F:
 	halt
 	call	Engine_ClearWorkingVRAM	;clear all copies of VRAM values from work RAM.				 
 	call	Engine_ClearLevelAttributes		 ;clear level header
-	call	Engine_ClearScreen
+	call	VDP_ClearScreen
 	call	GameState_CheckContinue ;load the continue screen if required
 	ld		a, ($D2BD)		  ;load the "Game Over" screen if bit 7 of $D2BD is reset.
 	bit		7, a
@@ -955,7 +879,7 @@ LABEL_820:
 	ld		($DD04), a
 	call	Engine_ClearWorkingVRAM	   ;clear various blocks of RAM & prepare the SAT
 	call	Engine_ClearLevelAttributes
-	call	Engine_ClearScreen
+	call	VDP_ClearScreen
 	call	Score_CalculateActTimeScore
 	call	TitleCard_LoadAndDraw  ;also deals with loading score card tiles
 	call	ScoreCard_UpdateScore
@@ -1025,7 +949,7 @@ LABEL_8A4:
 	djnz	-
 	call	Engine_ClearWorkingVRAM
 	call	Engine_ClearLevelAttributes
-	call	Engine_ClearScreen
+	call	VDP_ClearScreen
 	call	Score_CalculateActTimeScore
 	call	TitleCard_LoadAndDraw
 	call	ScoreCard_UpdateScore
@@ -1117,7 +1041,7 @@ LABEL_92A:
 	jp		Engine_UpdateGameState
 
 LABEL_97F:
-	call	Engine_ClearScreen
+	call	VDP_ClearScreen
 	call	TitleCard_LoadAndDraw
 	call	ScrollingText_UpdateSprites
 	call	PaletteFadeOut
@@ -1237,7 +1161,7 @@ _Load_Intro_Level:
 	ld		a, :Bank08			 ;load background scenery
 	call	Engine_SwapFrame2
 	ld		hl, $0200
-	call	VDP_SetVRAMPointer
+	call	VDP_SetAddress
 	ld		hl, Art_Intro_Scenery
 	xor		a
 	call	LoadTiles
@@ -1245,7 +1169,7 @@ _Load_Intro_Level:
 	ld		a, :Bank19			 ;load tails tiles
 	call	Engine_SwapFrame2
 	ld		hl, $0800
-	call	VDP_SetVRAMPointer
+	call	VDP_SetAddress
 	ld		hl, Art_Intro_Tails
 	xor		a
 	call	LoadTiles
@@ -1254,7 +1178,7 @@ _Load_Intro_Level:
 	ld		a, :Bank19			 ;load robotnik tiles
 	call	Engine_SwapFrame2
 	ld		hl, $0B40
-	call	VDP_SetVRAMPointer
+	call	VDP_SetAddress
 	ld		hl, Art_Intro_Tails_Eggman
 	xor		a
 	call	LoadTiles
@@ -1336,11 +1260,11 @@ _Load_Title_Level:
 	call	Engine_LoadLevel
 LABEL_FB9:
 	di		
-	call	Engine_ClearScreen
+	call	VDP_ClearScreen
 	ld		a, :Bank24			  ;page in bank 24
 	call	Engine_SwapFrame2
 	ld		hl, $2000
-	call	VDP_SetVRAMPointer
+	call	VDP_SetAddress
 	ld		hl, Art_Title_Screen	;title screen compressed art
 	xor		a
 	call	LoadTiles			   ;load the tiles into VRAM
@@ -1365,13 +1289,13 @@ LABEL_FB9:
 	ld		a, :Bank08			  ;swap in bank 8 
 	call	Engine_SwapFrame2
 	ld		hl, $0200
-	call	VDP_SetVRAMPointer
+	call	VDP_SetAddress
 	ld		hl, Art_Title_Sonic_Hand	;load sonic's animated hand
 	xor		a
 	call	LoadTiles
 	
 	ld		hl, $05C0
-	call	VDP_SetVRAMPointer
+	call	VDP_SetAddress
 	ld		hl, Art_Title_Tails_Face	;load tails' animated eye
 	xor		a
 	call	LoadTiles
@@ -1593,34 +1517,44 @@ Engine_UpdateSpriteAttribsArt:		  ;$1274
 
 Engine_SwapFrame2:
 LABEL_129C:
-	ld		($D12B), a
+	ld		(Frame2Page), a
 	ld		($FFFF), a
 	ret
 
+
 LABEL_12A3_4:
-	ld		bc, $0A96
-	;read the VDP status flags
-	in		a, ($BF)
--:  in   a, ($BF)   ;- 12 T-states	  FIXME: why read a second time? Timing issue? 
-	and		a		  ;- 4 T-states
-	;wait for no pending frame interrupt
-	jp		p, -
-	;run a busy-loop
--:  dec  bc
-	ld		a, c
-	or		b
-	jp		nz, -
-	in		a, ($BF)
-	and		a
-	ld		a, $01
-	;jump if pending frame interrupt
-	jp		m, +
-	dec		a
-+:  ld   ($D12D), a
-	or		a
-	ret		nz
-	ld		a, $80
-	ld		($DE91), a
+    ld    bc, $0A96
+
+    ;read the VDP status flags
+    in    a, (Ports_VDP_Control)
+
+-:  in    a, (Ports_VDP_Control)
+    and   a
+    ; loop until vblank interrupt is set
+    jp    p, -
+    
+    ; busywait for a while
+-:  dec   bc
+    ld    a, c
+    or    b
+    jp    nz, -
+
+    ; read the VDP status flags again
+    in    a, ($BF)
+    and   a
+    ld    a, $01
+    ;jump if pending frame interrupt
+    jp    m, +
+
+    dec   a
+
++:  ld    ($D12D), a
+    or    a
+    ret   nz
+    
+    ld    a, $80
+    ld    ($DE91), a
+
 	ret
 
 PaletteFadeOut:
@@ -1634,415 +1568,79 @@ LABEL_12C8:
 	set		6, (hl)   ;flag - foreground palette fade to black.
 	ret
 
-LABEL_12D6_79:
-_WriteToPaletteRAM:
-	;check the PaletteUpdatePending flag
-	ld		a, (PaletteUpdatePending)
+
+; =============================================================================
+;  Engine_CopyPalettes()
+; -----------------------------------------------------------------------------
+;  Copies the colour data stored in RAM to the VDP.
+; -----------------------------------------------------------------------------
+;  In:
+;    None.
+;  Out:
+;    None.
+;  Destroys:
+;
+; -----------------------------------------------------------------------------
+Engine_CopyPalettes:        ; $12D6
+	;check the Palette_UpdateTrig flag
+	ld		a, (Palette_UpdateTrig)
 	or		a
 	;don't update if the flag is 0
 	ret		z
 	ld		hl, WorkingCRAM
 	ld		de, $C000
 	ld		bc, $0020
-	call	VDP_CopyToVRAM
-	;reset the PaletteUpdatePending flag
+	call	VDP_Copy
+	;reset the Palette_UpdateTrig flag
 	xor		a
-	ld		(PaletteUpdatePending), a
-	ret
-
-Initialise_VDP_Registers:
-	;read/clear VDP status flags
-	in		a, ($BF)
-	ld		b, $0B
-	ld		c, $80
-	ld		de, VDPRegister0
-	ld		hl, Initial_VDP_Register_Values
--:  ld   a, (hl)
-	out		($BF), a
-	ld		(de), a
-	ld		a, c
-	out		($BF), a
-	inc		c
-	inc		de
-	inc		hl
-	djnz	-
-	ret
-
-Initial_VDP_Register_Values:
-.db $26, $82, $FF, $FF, $FF, $FF, $FB, $00, $00, $00, $FF
-
-
-;********************************************************
-;*  Write to VDP Register and maintain a copy in RAM.   *
-;*  NOTE: seems to be unused (debug?)				   *
-;*													  *
-;*  in  b	   The data.							   *
-;*  in  c	   The register.						   *
-;*  destroys	A									   *
-;********************************************************
-Write_VDP_Register:
-LABEL_1310:
-	push	bc
-	push	hl
-	;update the VDP Register
-	ld		a, b
-	out		($BF), a
-	ld		a, c
-	or		$80
-	out		($BF), a
-	;update the RAM copy
-	ld		a, b
-	ld		b, $00
-	ld		hl, VDPRegister0
-	add		hl, bc
-	ld		(hl), a
-	pop		hl
-	pop		bc
+	ld		(Palette_UpdateTrig), a
 	ret
 
 
-LABEL_1325:
-	in		a, ($BF)
-	ret
-
-
-;****************************************************
-;*  Set the VDP to write to a specific address.	 *
-;*  in  hl	  The VRAM address.				   *
-;****************************************************
-VDP_SetVRAMPointer:	 ;$1328
-	push	af		 ;preserve AF
-	ld		a, l	   ;set the VRAM pointer
-	out		($BF), a
-	ld		a, h
-	or		$40
-	out		($BF), a
-	pop		af		 ;restore AF
-	ret
-
-
-;****************************************************
-;*  Sends a VRAM Read command to the VDP with the   *
-;*  address stored in HL.						   *
-;*  in  hl	  The VRAM address.				   *
-;****************************************************
-VDP_SendRead:		   ;$1333
-	ld		a, l
-	out		($BF), a
-	ld		a, h
-	and		$3F
-	out		($BF), a
-	push	af
-	pop		af
-	ret
-
-
-;NOTE: Probably unused code
-LABEL_133E:
-	push	af
-	call	VDP_SetVRAMPointer
-	pop		af
-	out		($BE), a
-	ret
-
-;NOTE: Probably unused code
-LABEL_1346:
-	call	VDP_SendRead
-	in		a, ($BE)
-	ret
-
-;NOTE: Probably unused code
-LABEL_134C:
-	push	de
-	push	af
-	call	VDP_SetVRAMPointer
-	pop		af
-	ld		d, a
-	ld		a, d
-	out		($BE), a
-	push	af
-	pop		af
-	in		a, ($BE)
-	dec		bc
-	ld		a, b
-	or		c
-	jr		nz, $F4
-	pop		de
-	ret
-
-;************************************************
-;*  Copy a single value to a block of VRAM.	 *
-;*											  *
-;*  in  hl	  The VRAM address to copy to.	*
-;*  in  de	  The vale to copy to VRAM.	   *
-;*  in  bc	  Byte count.					 *
-;*  destroys	A, BC
-;************************************************
-VDP_WriteToVRAM:		;$1361
-	call	VDP_SetVRAMPointer
--:  ld   a, e		   ;write DE to VRAM
-	out		($BE), a
-	push	af 
-	pop		af
-	ld		a, d
-	out		($BE), a
-	
-	dec		bc
-	ld		a, b
-	or		c
-	jr		nz, -
-	ret
-
-;************************************************
-;*  Copy a block of data from RAM to VRAM.	  *
-;*											  *
-;*  in  hl	  The source address.			 *
-;*  in  de	  The VRAM address.			   *
-;*  in  bc	  Byte count.					 *
-;*  destroys	A, BC, DE, HL				   *
-;************************************************
-VDP_CopyToVRAM:		 ;$1372
-	ex		de, hl		 ;set the VRAM pointer
-	call	VDP_SetVRAMPointer
-	
--:  ld   a, (de)		;copy from (de) to VRAM
-	out		($BE), a
-	inc		de
-	dec		bc
-	ld		a, b
-	or		c
-	jr		nz, -
-	ret
-
-
-LABEL_1381:
-SetDisplayVisible:
-	;set register VDP(1) - mode control register 2
-	ld		hl, VDPRegister1
-	ld		a, (hl)
-	;change all flags - make sure display is visible
-	or		$40
-	ld		(hl), a
-	out		($BF), a
-	ld		a, $81
-	out		($BF), a
-	ret
-
-
-;********************************************************
-;*	Sets the lower 5 bits of the VDP's mode control 2	*
-;*	register (register 1).								*
-;********************************************************
-VDP_SetMode2:
-	;set register VDP(1) - mode control register 2
-	ld		hl, VDPRegister1
-	ld		a, (hl)
-	;only set flags 0 to 5
-	and		$BF
-	ld		(hl), a
-	out		($BF), a
-	ld		a, $81
-	out		($BF), a
-	ret
-
-EnableFrameInterrupt:
-	ld		hl, VDPRegister1
-	ld		a, (hl)
-	or		$20
-	ld		(hl), a
-	out		($BF), a
-	ld		a, $81
-	out		($BF), a
-	ret
-
-
-;********************************************
-;* Set the value for VDP(1) but leave the   *
-;* "Frame Interrupt" bit unchanged.		 *
-;********************************************
-SetVDPRegister1_LeaveInt:
-LABEL_13AA:
-	ld		hl, VDPRegister1
-	ld		a, (hl)
-	and		$DF
-	ld		(hl), a
-	out		($BF), a
-	ld		a, $81
-	out		($BF), a
-	ret
-
-;**********************************************
-;*  DrawText
-;*   Used by Level Select routine to draw text
-;*   to the screen.
-;*	hl  - The VRAM address.
-;*	de  - Pointer to chars
-;*	bc  - Char count
-;**********************************************
-DrawText:
-LABEL_13B8:
-	di
-	call	VDP_SetVRAMPointer
-	push	de
-	push	bc
--:  ld   a, (de)
-	out		($BE), a	   ;write a char to the VDP memory
-	ld		a, ($D2C7)	 ;retrieve the tile attributes byte
-	nop
-	nop
-	nop
-	out		($BE), a	   ;write the attributes byte to the VDP
-	inc		de			  ;increment pointer to next char
-	dec		bc			 ;decrement counter
-	ld		a, c
-	or		b
-	jr		nz, -		  ;jump if not zero
-	pop		bc
-	pop		de
-	ret
-
-LABEL_13D2:
-	push	de
-	push	bc
-	ld		a, ($D292)
-	bit		7, a
-	jr		nz, +
-	di
-	call	VDP_SetVRAMPointer
-	ld		a, (de)
-	out		($BE), a
-	ld		a, ($D2C7)
-	nop
-	nop
-	nop
-	out		($BE), a
-	ei
-	push	bc
-	push	de
-	push	hl
-	ld		b, $06
--:  ei
-	halt
-	ld		a, ($D137)
-	and		$80
-	jr		nz, ++
-	djnz	-
-++: pop	 hl
-	pop		de
-	pop		bc
-	inc		hl
-	inc		hl
-	inc		de
-	dec		bc
-	ld		a, c
-	or		b
-	jr		nz, $CE
-+:  pop	 bc
-	pop		de
-	ret
-
-	
-;******************************************************************************
-;* Updates SAT with data from $DB00 and $DB40. $DB00 contains VPOS attribues  *
-;* that get copied into VRAM at $3F00 -> $3F3F. $DB40 contains HPOS and char  *
-;* codes that get copied into $3F7F -> $3FFF.								 *
-;******************************************************************************
-Engine_UpdateSAT:		;$1409
-	ld		hl, SATUpdateRequired	   ;check to see if SAT update is required
-	xor		a
-	or		(hl)
-	ret		z				;don't bother updating if $D134 = 0
-	
-	ld		(hl), $00		;reset the "update required" flag
-	
-	ld		a, ($D12F)		;if framecount is odd do a descending update
-	rrca
-	jp		c, Engine_UpdateSAT_Descending
-	
-	ld		a, $00		  ;set VRAM pointer to $3F00 (SAT)
-	out		($BF), a
-	ld		a, $3F
-	or		$40
-	out		($BF), a
-	ld		hl, $DB00	   ;copy 64 VPOS bytes.
-	ld		c, $BE
-.REPEAT 64
-	outi
-.ENDR
-	ld		a, $80		  ;set VRAM pointer to SAT + $80
-	out		($BF), a
-	ld		a, $3F
-	or		$40
-	out		($BF), a
-	ld		hl, $DB40	   ;copy HPOS and char code attributes to VRAM at $3F7F.
-	ld		c, $BE
-.REPEAT 128
-	outi
-.ENDR
-	ret
-
-
-;******************************************************************************
-;* Updates SAT with data from $DB00 and $DB40. Player sprites written first.  *
-;* The remaining sprites are written in descending order.					 *
-;******************************************************************************
-Engine_UpdateSAT_Descending:	;$15B7
-	ld		a, $00	  ;set VRAM pointer to SAT
-	out		($BF), a
-	ld		a, $3F
-	or		$40
-	out		($BF), a
-	ld		hl, $DB00   ;write 8 bytes from $DB00 to VRAM
-	ld		c, $BE
-	outi
-	outi
-	outi
-	outi
-	outi
-	outi
-	outi
-	outi
-	ld		hl, $DB3F   ;write 56 bytes from $DB3F (decremented) to VRAM
-	ld		c, $BE
-.REPEAT 56
-	outd
-.ENDR
-	ld		a, $80		  ;set VRAM pointer to SAT + $80
-	out		($BF), a
-	ld		a, $3F
-	or		$40
-	out		($BF), a
-	ld		hl, $DB40	   ;write 16 bytes from $DB40 to SAT + $80
-	ld		c, $BE
-.REPEAT 16
-	outi
-.ENDR
-	ld		hl, $DBBE   ;write $38 2-byte words descending from $DBBE
-	ld		de, $FFFC   ; -4
-	ld		c, $BE
-.REPEAT 56
-	outi
-	outi
-	add		hl, de
-.ENDR
-	ret		
+; =============================================================================
+;  VDP Routines
+; -----------------------------------------------------------------------------
+.include "src/vdp.asm"
 
 
 
-;****************************************************
-;*  Clears the screen map & sprite attribute table. *
-;****************************************************
-Engine_ClearNameTable:	  ;179B
+; =============================================================================
+;  VDP_ClearScreenMap()                                              UNUSED
+; -----------------------------------------------------------------------------
+;  Clears the VDP's screen map memory
+; -----------------------------------------------------------------------------
+;  In:
+;    None.
+;  Out:
+;    None.
+; -----------------------------------------------------------------------------
+VDP_ClearScreenMap:     ; $179B
+    ; wait for one frame
 	ei
 	halt
 	di
-	ld		hl, ScreenMap  ;address
+
+    ; clear the VDP's screen map memory
+	ld		hl, VDP_ScreenMap  ;address
 	ld		bc, $0380	  ;count
 	ld		de, $0000	  ;value
-	call	VDP_WriteToVRAM
-	jr		Engine_ClearSAT
+	call	VDP_Write
+	jr		VDP_ClearSAT
 
 
+; =============================================================================
+;  VDP_ClearScreen
+; -----------------------------------------------------------------------------
+;  Clears the screen by resetting the first level tile ($2000) and setting the
+;  screen map to the tile index.
+; -----------------------------------------------------------------------------
+;  In:
+;    None.
+;  Out:
+;    None.
+;  Destroys:
+;    A, BC, DE, HL
+; -----------------------------------------------------------------------------
 ;************************************************************
 ;*  Clears the screen by resetting the first level tile	 *
 ;*  (i.e. the tiles starting at $2000) in VRAM and then	 *
@@ -2050,40 +1648,55 @@ Engine_ClearNameTable:	  ;179B
 ;*														  *
 ;*  destroys	A, BC, DE, HL							   *
 ;************************************************************
-Engine_ClearScreen:	 ;$17AC
+VDP_ClearScreen:	 ;$17AC
 	ei
 	halt
 	di
 	ld		hl, $2000		  ;clear the first level tile from VRAM (32-bytes starting at $2000)
 	ld		bc, $0020
 	ld		de, $0000
-	call	VDP_WriteToVRAM
+	call	VDP_Write
 	ld		hl, ScreenMap	  ;set up all background tiles to point to the first "level tile"
 	ld		bc, $0380
 	ld		de, $0100
-	call	VDP_WriteToVRAM
+	call	VDP_Write
 
 
-;************************************************************
-;*  Clears the copy of the SAT that's stored in work RAM	*
-;*  and sets the SAT update trigger.						*
-;*														  *
-;*  destroys	A, B, DE, HL								*
-;************************************************************
-Engine_ClearSAT:			;$17C7
-	ld		hl, $DB00		  ;fill $DB00->$DB3F with $F0, $DB40->$DBC0 with $00
-	ld		de, $DB40		  ;this will be copied into the SAT with the next update
-	xor		a				  ;so that all sprites have VPOS=240
+; =============================================================================
+;  VDP_ClearSAT()
+; -----------------------------------------------------------------------------
+;  Clears the RAM copy of the SAT by setting each sprite's vpos attribute
+;  to 240 then sets the SAT update trigger.
+; -----------------------------------------------------------------------------
+;  In:
+;    None.
+;  Out:
+;    None.
+;  Destroys:
+;    A, B, DE, HL
+; -----------------------------------------------------------------------------
+VDP_ClearSAT:        ; $17C7
+	ld		hl, VDP_WorkingSAT_VPOS
+	ld		de, VDP_WorkingSAT_HPOS
+	xor		a
+    
+    ; loop over the 64 sprites
 	ld		b, $40
--:	ld		(hl), $F0
+    
+-:	; set the vpos and clear the hpos and char code
+    ld		(hl), $F0
 	inc		hl
 	ld		(de), a
 	inc		de
 	ld		(de), a
 	inc		de
+    
 	djnz	-
-	ld		a, $FF			 ;set the SAT update trigger.
-	ld		(SATUpdateRequired), a
+    
+    ; flag the SAT update trigger
+	ld		a, $FF
+	ld		(VDP_SATUpdateTrig), a
+
 	ret
 
 
@@ -2150,7 +1763,7 @@ Engine_UpdateSpriteAttribs:	 ;$17DF
 	ldir
 
 +:	ld		a, $FF
-	ld		(SATUpdateRequired), a
+	ld		(VDP_SATUpdateTrig), a
 	ret
 
 ;********************************************************
@@ -2351,7 +1964,7 @@ Engine_UpdateSpriteAttribs_NoClear:		;$1937
 	djnz	-
 
 	ld		a, $FF			;trigger a SAT upate
-	ld		(SATUpdateRequired), a
+	ld		(VDP_SATUpdateTrig), a
 	ret
 
 ;********************************************************
@@ -2370,7 +1983,7 @@ Engine_LoadMappings:		;$1982
 	push	bc
 	push	hl
 	ld		b, c
-	call	VDP_SetVRAMPointer
+	call	VDP_SetAddress
 -:	ld		a, (de)
 	out		($BE), a		;write tile 1
 	inc		de
@@ -2388,7 +2001,7 @@ Engine_LoadMappings:		;$1982
 	ld		de, $0040
 	or		a
 	sbc		hl, de
-	call	VDP_SetVRAMPointer	;...and set VRAM pointer
+	call	VDP_SetAddress	;...and set VRAM pointer
 	pop		de
 +:	djnz	-
 	pop		hl
@@ -2411,7 +2024,7 @@ LABEL_19B9:		 ;TODO: seems to be unused
 	ld		de, $0040
 	or		a
 	sbc		hl, de
-	call	VDP_SetVRAMPointer
+	call	VDP_SetAddress
 	pop		de
 	ret
 
@@ -2532,7 +2145,7 @@ ReadInput:  ;$1A35
 	cpl
 	and		$10
 	ret		z
-	jp		Start
+	jp		Engine_Reset
 	ret
 
 _Port1_Input:   ;$1A7A
@@ -2723,7 +2336,7 @@ ScoreCard_UpdateScore:		;$1C12
 	ld		(NextMusicTrack), a
 	jr		++
 
-+:	ld		a, ($D12F)
++:	ld		a, (Engine_FrameCounter)
 	and		$03
 	jr		nz, ++
 	
@@ -2914,7 +2527,7 @@ LABEL_1DAF:
 	push	de
 	di		
 	ld		hl, ($D11C)
-	call	VDP_SetVRAMPointer
+	call	VDP_SetAddress
 	ld		hl, ScoreCard_Mappings_Numbers
 	ld		e, a
 	ld		d, $00
@@ -2936,7 +2549,7 @@ LABEL_1DAF:
 	ld		($D11C), hl
 	ld		de, $3E
 	add		hl, de
-	call	VDP_SetVRAMPointer
+	call	VDP_SetAddress
 	pop		hl
 	ld		a, (hl)
 	out		($BE), a
@@ -3485,12 +3098,12 @@ Engine_LoadLevel:		;$21AA
 	call	Engine_ClearWorkingVRAM
 	call	Engine_LoadLevelTiles
 	call	Engine_InitStatusIcons
-	ld		ix, $D15E
+	ld		ix, LevelAttributes
 	call	Engine_ClearLevelAttributes		;clear level header
 	call	Engine_LoadLevelHeader:
 	call	Engine_LoadLevelLayout
 	call	LoadRingArtPointers
-	ld		a, $01				 	;set up the sonic object
+	ld		a, Object_Sonic 			 	;set up the sonic object
 	ld		($D500), a
 	ld		a, ($D2B7)
 	or		a
@@ -3528,7 +3141,7 @@ Engine_InitStatusIcons:	 ;$21EE
 	or		a
 	ret		nz
 	di		
-	call	Engine_ClearSAT
+	call	VDP_ClearSAT
 	ld		hl, Engine_Data_StatusIconDefaults
 	ld		ix, $DB34			   ;VPOS for last 12 sprites in SAT
 	ld		iy, $DBA8			   ;HPOS/char for last 12 sprites
@@ -3782,7 +3395,8 @@ LABEL_247B:
 	jp		ChangeGameMode
 
 LABEL_24BE_48:
-	ld		a, ($D12C)		  ;check for level select cheat
+	;check for level select trigger
+	ld		a, (LevelSelectTrg)
 	cp		$0D
 	jr		nz, +
 	xor		a
@@ -3898,7 +3512,7 @@ DemoSequence_LoadLevel:	 ;254A
 	di
 	ld		hl, GameState
 	set		2, (hl)	 ;set "title card" flag
-	call	Engine_ClearScreen
+	call	VDP_ClearScreen
 	call	TitleCard_LoadAndDraw
 	call	ScrollingText_UpdateSprites
 	call	PaletteFadeOut
@@ -4016,7 +3630,7 @@ LABEL_2606:
 	ld		de, $1170	  ;copy $1170 to the name table
 	ld		hl, ScreenMap
 	ld		bc, $0380
-	call	VDP_WriteToVRAM
+	call	VDP_Write
 	call	TitleCard_LoadTiles
 ;FIXME: potential optimisations here.
 	ld		a, (GameState)
@@ -4233,7 +3847,7 @@ GameOverScreen_DrawScreen:	  ;27B4
 	ld		de, $1107		  ;clear the screen
 	ld		hl, ScreenMap
 	ld		bc, $0380
-	call	VDP_WriteToVRAM
+	call	VDP_Write
 	call	GameOverScreen_LoadTiles	   ;load the "Game Over" text  
 	ld		a, :Bank15	 
 	call	Engine_SwapFrame2  ;FIXME: this is probably unnecessary since the call to GameOverScreen_LoadTiles pages this in anyway
@@ -4260,7 +3874,7 @@ ContinueScreen_DrawScreen:	  ;27EE
 	ld		de, $010A		  ;clear the screen to blank tile $0A (offset from $2000 in VRAM)
 	ld		hl, ScreenMap
 	ld		bc, $0380
-	call	VDP_WriteToVRAM
+	call	VDP_Write
 	call	ContinueScreen_LoadTiles
 	call	ContinueScreen_LoadNumberTiles
 	ld		a, :Bank15
@@ -4306,7 +3920,7 @@ LABEL_2849:	 ;TODO: unused?
 	push	de
 	push	hl
 	ld		bc, $0001
-	call	VDP_CopyToVRAM
+	call	VDP_Copy
 	ei
 	halt
 	halt
@@ -4321,7 +3935,7 @@ LABEL_2849:	 ;TODO: unused?
 ScrollingText_UpdateSprites:		;285D
 	call	ScrollingText_LoadSATValues
 -:  ld	  a, $FF		  ;flag for a SAT update
-	ld		(SATUpdateRequired), a
+	ld		(VDP_SATUpdateTrig), a
 	call	ScrollingText_UpdateWorkingSAT
 	call	UpdateCyclingPalette_ScrollingText
 	ei		
@@ -6335,20 +5949,6 @@ DATA_3E96:
 DATA_3F16:
 .incbin "unknown\s2_3F16.bin"
 
-.IFEQ Version 1.0
-.db $00, $00
-.ENDIF
-
-.BANK 1 SLOT 1
-.ORG $0000
-
-.IFEQ Version 2.2
-.db	$00, $00
-.ENDIF
-
-.db $00, $00, $05, $00, $FB, $FF, $00, $00 
-.db $00, $00, $00, $00, $00, $00, $00, $00 
-.db $00, $00, $00, $00, $00, $00
 
 ;h-speed adjustment values
 DATA_4016:
@@ -8321,7 +7921,7 @@ Engine_LoadMappings32_Row:  ;$5920
 	ld		de, $0000
 	call	Engine_Mappings_GetBlockXY
 	
-	ld		de, ($D16E)	 ;get vertical offset value
+	ld		de, ($D16E)		;get vertical offset value
 	bit		1, (ix+0)	   ;is level scrolling down?
 	jr		nz, +		   ;jump if it is
 	
@@ -9248,33 +8848,33 @@ LABEL_631A:
 	pop		hl
 	
 	bit		7, a				;is block value >= $80?
-	jr		z, LABEL_634C	   ;if not, clear Z flag and return
+	jr		z, LABEL_634C		;if not, clear Z flag and return
 	
-	ld		e, (ix+$18)		 ;DE = object's vertical speed
+	ld		e, (ix+$18)			;DE = object's vertical speed
 	ld		d, (ix+$19)
 	bit		7, d
-	jr		nz, LABEL_634C	  ;jump if object moving up (clear Z flag)
+	jr		nz, LABEL_634C		;jump if object moving up (clear Z flag)
 	
-	xor		a				   ;this part makes the object bounce
-	sbc		hl, de			  ;HL -= DE
-	jr		c, LABEL_6344	   ;jump if object now moving up
+	xor		a					;this part makes the object bounce
+	sbc		hl, de				;HL -= DE
+	jr		c, LABEL_6344		;jump if object now moving up
 	
-	ld		hl, $0000		   ;object still moving down - set vertical
-	ld		(ix+$18), l		 ;velocity to 0
+	ld		hl, $0000			;object still moving down - set vertical
+	ld		(ix+$18), l			;velocity to 0
 	ld		(ix+$19), h
-	xor		a				   ;set Z flag
+	xor		a					;set Z flag
 	scf
 	ret		
 
 LABEL_6344:
 	ld		(ix+$18), l
 	ld		(ix+$19), h
-	xor		a				   ;set Z flag
+	xor		a					;set Z flag
 	ret		
 
 LABEL_634C:
 	xor		a
-	dec		a				   ;clear Z flag
+	dec		a					;clear Z flag
 	ret		
 
 ;****************************************************************
@@ -9809,7 +9409,7 @@ Logic_MoveVerticalTowardsObject:		;$65EB
 ;*  objects.														*
 ;********************************************************************
 Engine_RemoveBreakableBlock:		;$6614
-	ld		a, ($D12B)	  ;keep hold of the current bank number so that
+	ld		a, (Frame2Page)	  ;keep hold of the current bank number so that
 	push	af			  ;we can swap it back in later
 
 	call	Engine_GetCollisionValueForBlock	;collide with background tiles
@@ -9867,7 +9467,7 @@ Engine_RemoveBreakableBlock:		;$6614
 	call	Engine_AllocateObjectHighPriority
 
 	pop		af				  ;retrieve the previous bank number
-	ld		($D12B), a		  ;and swap it back in
+	ld		(Frame2Page), a		  ;and swap it back in
 	ld		($FFFF), a
 	ret		
 
@@ -10885,7 +10485,7 @@ LABEL_6D52:
 	jp		LABEL_6D81
 
 LABEL_6D81:
-	ld		a, ($D12B)
+	ld		a, (Frame2Page)
 	push	af
 	ld		a, ($D162)  ;bank with 32x32 mappings
 	call	Engine_SwapFrame2
@@ -11253,11 +10853,11 @@ LABEL_6FCE:
 ;collide with level tiles - set vertical position
 LABEL_7010:
 	push	bc
-	ld		a, ($D12B)		;store current frame for later
+	ld		a, (Frame2Page)		;store current frame for later
 	push	af
 	
 	ld		a, :Bank30		;swap in the bank with the collision data
-	ld		($D12B), a
+	ld		(Frame2Page), a
 	ld		($FFFF), a
 	
 	ld		hl, ($D354)		;get address of mapping in level data
@@ -11311,7 +10911,7 @@ LABEL_7010:
 	ld		(ix+$14), l
 LABEL_7066:
 	pop		af
-	ld		($D12B), a
+	ld		(Frame2Page), a
 	ld		($FFFF), a
 	pop		bc
 	ret		
@@ -11984,11 +11584,11 @@ Logic_ALZ_WaterBounce:	  ;$7447
 ;bc = horizontal position adjustment
 ;de = vertical position adjustment
 Engine_GetCollisionDataForBlock:		;$7481
-	ld		a, ($D12B)			;save current page for later
+	ld		a, (Frame2Page)			;save current page for later
 	push	af
 	
 	ld		a, :Bank30			;swap in bank with collision data
-	ld		($D12B), a
+	ld		(Frame2Page), a
 	ld		($FFFF), a
 	
 	ld		h, (ix+$12)			;horizontal pos in level
@@ -12095,7 +11695,7 @@ Engine_GetCollisionDataForBlock:		;$7481
 	ld		($D35F), bc	 ;...and store here.
 	
 	pop		af			  ;restore previous page
-	ld		($D12B), a
+	ld		(Frame2Page), a
 	ld		($FFFF), a
 	ret		
 
@@ -12116,10 +11716,10 @@ Engine_GetCollisionDataForBlock:		;$7481
 ;*	destroys	BC, HL											*
 ;****************************************************************
 Engine_GetCollisionValueForBlock:	   ;$752E
-	ld		a, ($D12B)		;save current bank number for later
+	ld		a, (Frame2Page)		;save current bank number for later
 	push	af
 	ld		a, :Bank30
-	ld		($D12B), a
+	ld		(Frame2Page), a
 	ld		($FFFF), a
 	
 	ld		h, (ix+$12)		;Horizontal position in level
@@ -12187,7 +11787,7 @@ Engine_GetCollisionValueForBlock:	   ;$752E
 
 Engine_GetCollisionData_CleanUp:			;$759F
 	pop		af				;restore the previous frame
-	ld		($D12B), a
+	ld		(Frame2Page), a
 	ld		($FFFF), a
 	ld		a, ($D35E)		;restore block type to A
 	ret		
@@ -12313,7 +11913,7 @@ Engine_LoadLevelTiles:	 ;763F
 	call	Engine_SwapFrame2
 	ld		l, (iy+1)		;VRAM address
 	ld		h, (iy+2)
-	call	VDP_SetVRAMPointer
+	call	VDP_SetAddress
 	ld		l, (iy+3)		;tile source
 	ld		h, (iy+4)
 	xor		a
@@ -12332,7 +11932,7 @@ Engine_LoadLevelTiles:	 ;763F
 	ld		l, (iy+1)			;VRAM address
 	ld		h, (iy+2)
 	di
-	call	VDP_SetVRAMPointer	  ;set the VRAM pointer
+	call	VDP_SetAddress	  ;set the VRAM pointer
 	ld		l, (iy+3)	   ;tile source
 	ld		h, (iy+4)
 	ld		a, (iy+0)	   ;indexed tile flag
@@ -12379,7 +11979,7 @@ LevelSelect_LoadFont:	   ;76D7
 	ld		a, :Bank09				 ;Page in the bank containing the font
 	call	Engine_SwapFrame2	  
 	ld		hl, $2400				  ;Prepare to write to VRAM Address $2400
-	call	VDP_SetVRAMPointer
+	call	VDP_SetAddress
 	ld		hl, Art_LevelSelect_Font
 	xor		a
 	call	LoadTiles				  ;Load tiles into VRAM
@@ -12391,24 +11991,24 @@ TitleCard_LoadTiles:		;76EB
 	ld		a, :Bank09
 	call	Engine_SwapFrame2
 	ld		hl, $2000	   ;set up to write to VRAM at $2000
-	call	VDP_SetVRAMPointer
+	call	VDP_SetAddress
 	ld		hl, Art_TitleCard_Text_Tiles
 	xor		a
 	call	LoadTiles
 	ld		hl, $3020	   ;set up to write to VRAM at $3020
-	call	VDP_SetVRAMPointer
+	call	VDP_SetAddress
 	ld		hl, Art_TitleCard_Unknown
 	xor		a
 	call	LoadTiles
 	ld		hl, $30C0	   ;set up to write to VRAM at $30C0
-	call	VDP_SetVRAMPointer
+	call	VDP_SetAddress
 	ld		hl, Art_TitleCard_Unknown2
 	xor		a
 	call	LoadTiles
 	ld		a, :Bank07
 	call	Engine_SwapFrame2
 	ld		hl, $1000
-	call	VDP_SetVRAMPointer
+	call	VDP_SetAddress
 	ld		hl, Art_Scrolling_Text_Background
 	xor		a
 	call	LoadTiles
@@ -12418,7 +12018,7 @@ TitleCard_LoadTiles:		;76EB
 	ld		a, :Bank25		  ;load the level picture
 	call	Engine_SwapFrame2
 	ld		hl, $0000
-	call	VDP_SetVRAMPointer
+	call	VDP_SetAddress
 	ld		a, (CurrentLevel)	   ;which level do we need the picture for?
 	add		a, a					;calcuate the offset into the pointer array
 	add		a, a
@@ -12470,7 +12070,7 @@ GameOverScreen_LoadTiles:   ;777D
 	ld		a, :Bank15				 ;switch to bank 15
 	call	Engine_SwapFrame2
 	ld		hl, $2000				  ;write to VRAM at $2000
-	call	VDP_SetVRAMPointer
+	call	VDP_SetAddress
 	ld		hl, GameOverScreen_Data_GameOverTiles
 	xor		a
 	call	LoadTiles				  ;load the art
@@ -12482,7 +12082,7 @@ ContinueScreen_LoadTiles:   ;7791
 	ld		a, :Bank15
 	call	Engine_SwapFrame2
 	ld		hl, $2000
-	call	VDP_SetVRAMPointer
+	call	VDP_SetAddress
 	ld		hl, ContinueScreen_Data_ContinueTiles
 	xor		a
 	call	LoadTiles
@@ -12493,7 +12093,7 @@ ContinueScreen_LoadNumberTiles:	 ;77A5
 	ld		a, :Bank15
 	call	Engine_SwapFrame2
 	ld		hl, $2240
-	call	VDP_SetVRAMPointer
+	call	VDP_SetAddress
 	ld		hl, ContinueScreen_Data_NumberTiles
 	xor		a
 	call	LoadTiles
@@ -12525,11 +12125,11 @@ LABEL_77F3_16:
 ClearVRAM:
 	;reset contents of VRAM.
 	di
-	call	VDP_SetMode2
+	call	VDP_SetMode2Reg_DisplayOff
 	ld		hl, $0000
 	ld		de, $0000
 	ld		bc, $0400
-	call	VDP_SetVRAMPointer
+	call	VDP_SetAddress
 -:	ld		a, e
 	out		($BE), a
 	out		($BE), a
@@ -12551,7 +12151,7 @@ ClearVRAM:
 	ld		a, b
 	or		c
 	jr		nz, -
-	call	SetDisplayVisible
+	call	VDP_SetMode2Reg_DisplayOn
 	ret
 
 LABEL_782D_12:
@@ -12563,7 +12163,7 @@ ClearPaletteRAM:
 	ld		de, $0000
 	;loop 32 times
 	ld		bc, $0020
-	call	VDP_WriteToVRAM
+	call	VDP_Write
 	ret
 
 
@@ -12604,7 +12204,7 @@ Engine_HandlePLC:	   ;$783B
 
 	call	Engine_SwapFrame2		;swap the correct bank into page 2
 	ld		hl, (PLC_VRAMAddr)
-	call	VDP_SetVRAMPointer		;set the VRAM pointer
+	call	VDP_SetAddress		;set the VRAM pointer
 	ld		hl, (PLC_SourceAddr)
 	ld		a, (PLC_ByteCount)		;check for >0 bytes
 	or		a
@@ -12646,7 +12246,7 @@ Engine_HandlePLC_CopyMirrored:		;$789D
 	call	Engine_SwapFrame2
 
 	ld		hl, (PLC_VRAMAddr)		;set the VRAM pointer
-	call	VDP_SetVRAMPointer
+	call	VDP_SetAddress
 
 	ld		hl, (PLC_SourceAddr)
 
@@ -12661,7 +12261,7 @@ Engine_HandlePLC_CopyMirrored:		;$789D
 +:	ld		b, a			;b = number of tiles to copy
 
 							;set up to load data from $100 onwards
-	ld		d, Data_TileMirroringValues >> 8
+	ld		d, Engine_Data_ByteFlipLUT >> 8
 
 --:	ld		c, $20			;loop 32 times (copy one tile)
 
@@ -12861,7 +12461,7 @@ Engine_HandlePLC_ChaosEmerald:  ;$7993
 	ex		de, hl
 	ld		de, $0A80			   ;VRAM address
 	ld		bc, $0080			   ;byte count
-	call	VDP_CopyToVRAM
+	call	VDP_Copy
 
 	ei		;enable interrupts
 	jp		Engine_HandlePLC_CleanUp
@@ -12888,7 +12488,7 @@ Engine_HandlePLC_MonitorArt:	;$79C7
 	ex		de, hl
 	ld		de, $0A80			   ;VRAM destination
 	ld		bc, $00C0			   ;byte count
-	call	VDP_CopyToVRAM
+	call	VDP_Copy
 
 	ei		;enable interrupts
 	jp		Engine_HandlePLC_CleanUp
@@ -13047,7 +12647,7 @@ UpdateCyclingPalette_Rain:	  ;$7D41
 	ld		bc, $0003
 	ldir
 	ld		a, $FF
-	ld		(PaletteUpdatePending), a
+	ld		(Palette_UpdateTrig), a
 	ret
 
 ;unknown palette. gets called in SHZ2
@@ -13066,7 +12666,7 @@ UpdateCyclingPalette_SHZ_Lightning:	 ;$7D73
 	ld		hl, $D4D1
 	ld		(hl),a
 	ld		a, $FF
-	ld		(PaletteUpdatePending),a
+	ld		(Palette_UpdateTrig),a
 	ld		a, (iy+$02)
 	cp		$10
 	ret		c
@@ -13101,7 +12701,7 @@ UpdateCyclingPalette_Lava:	  ;$7DA7
 	ld		bc, $0003
 	ldir	
 	ld		a, $FF
-	ld		(PaletteUpdatePending), a
+	ld		(Palette_UpdateTrig), a
 	ret
 	
 ;update the cycling palette for ALZ's water
@@ -13127,7 +12727,7 @@ UpdateCyclingPalette_Water:	 ;$7DD9
 	ld		bc, $0003
 	ldir	
 	ld		a, $FF
-	ld		(PaletteUpdatePending), a
+	ld		(Palette_UpdateTrig), a
 	ret		
 
 ;Update the GMZ conveyor belt and wheel palette
@@ -13153,7 +12753,7 @@ UpdateCyclingPalette_Conveyor:	  ;$7E0B
 	ld		bc, $0003
 	ldir
 	ld		a, $FF
-	ld		(PaletteUpdatePending), a
+	ld		(Palette_UpdateTrig), a
 	ret
 
 UpdateCyclingPalette_Unknown2:	  ;$7E3D
@@ -13177,7 +12777,7 @@ UpdateCyclingPalette_Unknown2:	  ;$7E3D
 	ld		bc, $0002
 	ldir	
 	ld		a, $FF
-	ld		(PaletteUpdatePending), a
+	ld		(Palette_UpdateTrig), a
 	ret
 
 ;Update the CEZ3 wall lights
@@ -13201,7 +12801,7 @@ UpdateCyclingPalette_WallLighting:	  ;$7E6C
 	ld		de, $D4CA
 	ld		(de), a
 	ld		a, $FF
-	ld		(PaletteUpdatePending), a
+	ld		(Palette_UpdateTrig), a
 	ret
 
 ;update the CEZ1 orb cycling palette
@@ -13226,7 +12826,7 @@ UpdateCyclingPalette_Orb:	   ;$7E97
 	ld		bc, $0002
 	ldir	
 	ld		a, $FF
-	ld		(PaletteUpdatePending), a
+	ld		(Palette_UpdateTrig), a
 	ret
 
 ;Update palette for CEZ3 boss lightening
@@ -13254,7 +12854,7 @@ UpdateCyclingPalette_Lightning:	 ;$7EC6
 	ld		bc, $0010
 	ldir
 	ld		a, $FF
-	ld		(PaletteUpdatePending), a
+	ld		(Palette_UpdateTrig), a
 	ret
 
 ;Update palette for CEZ3 boss lightning (part 2)
@@ -13264,7 +12864,7 @@ UpdateCyclingPalette_Lightning2:		;$7EF8
 	ld		bc, $0010
 	ldir
 	ld		a, $FF
-	ld		(PaletteUpdatePending), a
+	ld		(Palette_UpdateTrig), a
 	ld		(iy+$00), $00
 	ld		(iy+$03), $00
 	ld		(iy+$02), $00
@@ -13275,7 +12875,7 @@ UpdateCyclingPalette_ScrollingText:	 ;$7F15
 	and		$03
 	ret		nz
 
-	ld		a, ($D12B)		;save current bank so that we can swap it back in later
+	ld		a, (Frame2Page)		;save current bank so that we can swap it back in later
 	push	af
 	ld		a, :Bank30
 	call	Engine_SwapFrame2
@@ -13293,10 +12893,10 @@ UpdateCyclingPalette_ScrollingText:	 ;$7F15
 	ldir
 
 	ld		a, $FF		  ;flag for a VRAM palette update
-	ld		(PaletteUpdatePending), a
+	ld		(Palette_UpdateTrig), a
 
 	pop		af			  ;page the previous bank bank in
-	ld		($D12B), a
+	ld		(Frame2Page), a
 	ld		($FFFF), a
 	ret
 
@@ -13404,7 +13004,8 @@ Engine_AnimateRingArt:		;$7FAE
 
 
 
-.ORG $3FF0	  ;offset within current bank
+.BANK 1 SLOT 1
+.ORG 0
 
 ROM_HEADER:				;$7FF0
 .db "TMR SEGA" 

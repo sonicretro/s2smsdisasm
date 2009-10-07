@@ -15,7 +15,7 @@ Palette_Update:
 	jr      z, +
 	call    Palette_UpdateColours
 	ld      a, $FF
-	ld      (PaletteUpdatePending), a
+	ld      (Palette_UpdateTrig), a
 +:	ld      de, $0002		;check FgPaletteControl
 	add     ix, de
 	pop     iy

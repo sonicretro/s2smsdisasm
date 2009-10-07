@@ -13,14 +13,14 @@ LABEL_A2C:
 	di
 	call LevelSelect_LoadFont
     call Engine_ClearLevelAttributes
-    call ClearWorkingVRAM			;clear RAM from $D300 -> $DBBF
-    call Engine_ClearScreen
+    call Engine_ClearWorkingVRAM			;clear RAM from $D300 -> $DBBF
+    call VDP_ClearScreen
     ld   a, $01					;tile attributes
     ld   ($D2C7), a
     ld   hl, $3808				;VRAM destination
     ld   de, _Title				;source data
     ld   bc, $10
-    call DrawText
+    call VDP_DrawText
 	jr   SoundTest_DrawEntry1
 
 _Title:
@@ -32,7 +32,7 @@ SoundTest_DrawEntry1:
 	ld   hl, $3888
 	ld   de, SoundTest_Entry1
 	ld   bc, SoundTest_DrawEntry2 - SoundTest_Entry1
-	call DrawText
+	call VDP_DrawText
 	jr   SoundTest_DrawEntry2
 
 SoundTest_Entry1:
@@ -123,7 +123,7 @@ DrawSoundValue:
 	ex		de, hl
 	ld		hl, $3896
 	ld		bc, $0001
-	call	DrawText
+	call	VDP_DrawText
 	
 	ld		a, (SoundValue)
 	and		$0F
@@ -134,7 +134,7 @@ DrawSoundValue:
 	ex		de, hl
 	ld		hl, $3898
 	ld		bc, $0001
-	call	DrawText
+	call	VDP_DrawText
 	
 	ret
 

@@ -20,7 +20,7 @@ ECHO ==========================
 
 REM Use fcomp to compare with original ROM
 REM ECHO Comparing with original:
-REM fcomp s2.sms "Sonic the Hedgehog 2 (UE) [!].sms"
+fcomp s2.sms "Sonic the Hedgehog 2 (UE) [!].sms" > compare.txt
 REM fcomp s2.sms "Sonic the Hedgehog 2 (UE) (V2.2).sms"
 
 GOTO end
@@ -33,7 +33,7 @@ ECHO Error while linking.
 :fail
 
 ECHO ==========================
-ECHO Build failure."
+ECHO Build failure.
 ECHO ==========================
 
 :end

@@ -1,4 +1,5 @@
-.def	Music_AquaLake		$81
+.def	Music_FirstSlot		$81
+.def	Music_AquaLake		Music_FirstSlot
 .def	Music_Underground	$82
 .def	Music_GimmickMt		$83
 .def	Music_CrystalEgg	$84
@@ -18,7 +19,8 @@
 .def	Music_Unknown		$92		;sounds like it could be Crystal egg related.
 .def 	Music_TitleCard		$93
 
-.def 	SFX_Ring			$9A
+.def	SFX_FirstSlot		$9A
+.def 	SFX_Ring			SFX_FirstSlot
 .def 	SFX_Roll			$9B
 .def 	SFX_Spring			$9C
 .def	SFX_Jump			$9D

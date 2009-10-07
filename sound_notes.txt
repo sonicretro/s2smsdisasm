@@ -1,0 +1,273 @@
+Driver Memory Layout:
+-----------------------------------------------------------
+
+    $DD08           -   Reset trigger.
+	$DD09			-	Fade out countdown major value.
+	$DD0A			-	Fade out countdown minor value.
+	$DD0B			-	Fade out minor countdown reset value.
+
+    $DD16           -   Noise channel volume.
+
+	$DD46			-	Volume.
+
+-----------------------------------------------------------
+Sound Module Header
+
+  Each sound module starts with a 6 byte header, the
+  format of which is as follows:
+  
+            [pppp nnxx ccgg]
+  
+    p - probably intended as a pointer to the "instrument"
+        data (volume envelopes) but not used as such.
+      
+    n - number of channels (0 < nn < 5).
+  
+    x - unused. completely skipped by loading routine.
+
+    c - channel speed modifier.
+  
+    g - global speed modifier.
+
+    
+  Immediately following the module header are the 4 byte
+  channel headers. The number of channel headers must
+  match the value specified in the [nn] field of the
+  module header.
+  
+            [cccc ppvv]
+            
+    c - pointer to the channel's data stream.
+    
+    p - initial pitch adjustment value for the channel.
+    
+    v - initial volume adjustment value.
+
+
+-----------------------------------------------------------
+Tone Effect Structure:
+	
+	Pointer to effect data stored in (IX + $10) & (IX + $11).
+	Effect pointer is loaded into IY by routine at $82D0.
+
+
+-----------------------------------------------------------
+Notes on "read literal" mode.
+
+    Literal tone data must be stored in big-endian format
+    in order to distinguish between a 16-bit data word
+    and a command byte.
+    Each tone word must be followed by a tone duration 
+    byte.
+
+-----------------------------------------------------------	
+Channel Control byte flags:
+		
+	  Bit 	| Description
+	------------------------------------------
+	   0	|
+	   1    |  Maintain effect state across notes.
+	   2    |  Suppress all PSG writes for the channel.
+	   3    |  Triggers 16bit literal tone data reads.
+	   4    |  Suppress writes to PSG volume register.
+	   5    |  ??? - disable tone effects?
+	   6	|  Update volume only.
+	   7    |  Channel Enable.
+
+
+    Bit 1 prevents effect state from being reset between
+    notes.
+    
+-----------------------------------------------------------
+Tone Flags ($07):
+
+     Bit |
+    ------------------------------------
+      0  |
+      1  |
+      2  |
+      3  |
+      4  |
+      5  |
+      6  |
+      7  |  Effect type ( 0 = envelope, 1 = bend)
+
+-----------------------------------------------------------
+Volume Flags ($08):
+
+     Bit |
+    ------------------------------------
+      0  |
+      1  |
+      2  |
+      3  |
+      4  |
+      5  |
+      6  |
+      7  |  Preserve Volume
+      
+-----------------------------------------------------------
+Flags at $1D:
+
+     Bit |
+    ------------------------------------
+      0  |
+      1  |
+      2  |
+      3  |
+      4  |  Vol fade in
+      5  |  Vol fade out?
+      6  |
+      7  |  Suppress volume updates.
+
+-----------------------------------------------------------
+
+Sound Commands:
+
+$E0 - volume effects?
+    params:
+        uint8 - fade in step value (subtracted from volume byte)     ($20)
+        uint8 - added to volume byte    ($21)
+        uint8 - max volume              ($22)
+        uint8 - added to volume byte    ($23)
+        uint8 - added to volume byte    ($24)
+    notes:
+        - sets MSB of (ix + 8)
+        - ix+$20 is subtracted from current vol
+
+
+$E1 - Detune
+    params:
+        int8  - signed detune value. added to PSG frequency value.
+
+
+$E2 - Adjust Tone Volume
+    params:
+        int8  - Adjustment value.
+    notes:
+        Adjusts tone channel volume attenuation by adding the 
+        parameter to the value at (IX + 6)
+
+
+$E4 - Adjust Noise Volume
+    params:
+        int8  - Adjustment value.
+
+    notes:
+        Adjusts noise channel volume attenuation by adding the
+        parameter to the value at ($DD16)
+
+
+
+$E6 - Adjust Tone Volume (same as $E2)
+    params:
+        int8  - Adjustment value.
+    notes:
+        Adjusts tone channel volume attenuation by adding the 
+        parameter to the value at (IX + 6)
+
+
+$E7 - Repeat Note
+    params:
+        uint8 - ticks per note
+    notes:
+        Repeats the previous note without resetting any of
+        the tone/volume effect states.
+
+
+$ED - Set Global Speed
+    params:
+        uint8 - new speed.
+    notes:
+        Sets the speed value for the entire sound driver. The
+        counter is decremented once per frame. When the counter
+        reaches 0 an extra tick is inserted into each of the
+        channel's counters (ix + $0A).
+
+
+$F0 - Pitch Bend
+	params:
+		uint8 - number of ticks to wait before applying effect
+		uint8 - step duration (ticks)
+		int8  - step value (signed)
+		uint8 - depth (number of steps)
+	notes:
+		- the driver divides the depth by 2 so that the pitch
+          is bent around the note rather than just above/below
+          it. A depth value of 1 results in the driver
+          calculating 0 (integer division) which gives a depth 
+          of 256 steps.
+
+
+$F2 - Stop Playback?
+
+
+$F4 - Pitch Envelope
+    params:
+        uint8 - envelope index.
+    notes:
+        seems to be unused in the vanilla sonic 2 music.
+
+
+$F5 - Volume Envelope
+	params:
+		uint8 - envelope index.
+	notes:
+		- sets (ix + 8)
+
+
+$F6 - Jump
+    params:
+        uint16 - address
+    notes:
+        immediate unconditional branch without link.
+
+
+$F7 - Conditional Jump
+    params:
+        uint8  - loop slot number
+        uint8  - loop count
+        uint16 - address
+    notes:
+        will follow the jump <count> times.
+
+
+$F8 - BranchWithLink
+	params:
+		uint16	next data pointer
+	notes:
+		- pushes current data pointer onto channel stack
+
+
+$F9 - Return
+	params:
+		none
+	notes:
+		pops data pointer off of channel stack
+
+
+$FA - Set Channel Speed
+    params:
+        uint8  - multiplier value (copied to ix+2)
+    notes:
+        sets the channel's ticks-per-note multiplier.
+
+
+$FB - Add Tone Adjustment
+    params:
+        int8   - signed tone adjustment value.
+    notes:
+        parameter is added to value at (ix+5).
+
+
+
+$FD - Read Literal
+    params:
+        uint8  - set/reset flag
+    notes:
+        parameter of $01 sets the flag; anything else clears it.
+        when set, tells the driver to start reading word values
+        from the data stream. these values are treated as raw
+        tone counter values and are copied into IX+$0B (effects
+        are applied first). every tone word must be followed by
+        a duration byte.
