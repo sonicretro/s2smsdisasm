@@ -533,7 +533,7 @@ VDP_UpdateSAT:      ; $1409
 	
     
     ; check the frame counter. if it's odd do a descending update
-    ld		a, (Engine_FrameCounter)
+    ld		a, (FrameCounter)
     rrca
     jp		c, VDP_UpdateSAT_Descending
 	
@@ -617,3 +617,92 @@ VDP_UpdateSAT_Descending:	;$15B7
 .ENDR
 
 	ret
+
+
+; =============================================================================
+;  VDP_ClearScreenMap()                                              UNUSED
+; -----------------------------------------------------------------------------
+;  Clears the VDP's screen map memory
+; -----------------------------------------------------------------------------
+;  In:
+;    None.
+;  Out:
+;    None.
+; -----------------------------------------------------------------------------
+VDP_ClearScreenMap:     ; $179B
+    ; wait for one frame
+    ei
+    halt
+    di
+
+    ; clear the VDP's screen map memory
+    ld        hl, VDP_ScreenMap  ;address
+    ld        bc, $0380      ;count
+    ld        de, $0000      ;value
+    call    VDP_Write
+    jr        VDP_ClearSAT
+
+
+; =============================================================================
+;  VDP_ClearScreen
+; -----------------------------------------------------------------------------
+;  Clears the screen by resetting the first level tile ($2000) and setting the
+;  screen map to the tile index.
+; -----------------------------------------------------------------------------
+;  In:
+;    None.
+;  Out:
+;    None.
+;  Destroys:
+;    A, BC, DE, HL
+; -----------------------------------------------------------------------------
+VDP_ClearScreen:     ;$17AC
+    ei
+    halt
+    di
+    ld        hl, $2000          ;clear the first level tile from VRAM (32-bytes starting at $2000)
+    ld        bc, $0020
+    ld        de, $0000
+    call    VDP_Write
+    ld        hl, ScreenMap      ;set up all background tiles to point to the first "level tile"
+    ld        bc, $0380
+    ld        de, $0100
+    call    VDP_Write
+
+
+; =============================================================================
+;  VDP_ClearSAT()
+; -----------------------------------------------------------------------------
+;  Clears the RAM copy of the SAT by setting each sprite's vpos attribute
+;  to 240 then sets the SAT update trigger.
+; -----------------------------------------------------------------------------
+;  In:
+;    None.
+;  Out:
+;    None.
+;  Destroys:
+;    A, B, DE, HL
+; -----------------------------------------------------------------------------
+VDP_ClearSAT:        ; $17C7
+    ld        hl, VDP_WorkingSAT_VPOS
+    ld        de, VDP_WorkingSAT_HPOS
+    xor        a
+    
+    ; loop over the 64 sprites
+    ld        b, $40
+    
+-:    ; set the vpos and clear the hpos and char code
+    ld        (hl), $F0
+    inc        hl
+    ld        (de), a
+    inc        de
+    ld        (de), a
+    inc        de
+    
+    djnz    -
+    
+    ; flag the SAT update trigger
+    ld        a, $FF
+    ld        (VDP_SATUpdateTrig), a
+
+    ret

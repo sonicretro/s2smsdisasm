@@ -25,48 +25,51 @@ music_ugz_bin_Channel3_Header:
 .db $00        ; pitch adjustment
 .db $00        ; volume adjustment
 
-music_ugz_bin_Channel0:
+
+; ---------------------------------------------------------
+music_ugz_bin_Channel0:             ; $0016 / $8FAE
     PitchBend       12, 1, 1, 4
-music_ugz_bin_LABEL_8FB3:
+; ---------------------------------------------------------
+music_ugz_bin_LABEL_8FB3:           ; $001B / $8FB3
     VolumeEnvelope  8
-    C6
-        .db $07
-    B5
-        .db 1
-    A5
-    G5
-    F5
-    E5
-    AdjustVolume    2
-    Loop            0, 6, music_ugz_bin_LABEL_8FB3
+    C6                              ; $001D
+        .db $07                     ; $001E
+    B5                              ; $001F
+        .db 1                       ; $0020
+    A5                              ; $0021
+    G5                              ; $0022
+    F5                              ; $0023
+    E5                              ; $0024
+    AdjustVolume    2               ; $0025
+    Loop            0, 6, music_ugz_bin_LABEL_8FB3      ; $0027
+; ---------------------------------------------------------
+    AdjustVolume    -12             ; $002C / $8FC4
+    Rest                            ; $002E
+        .db 6                       ; $002F
     
-    AdjustVolume    -12
-    Rest
-        .db 6
-    
-    E4
-        .db 1
-    F4
-    G4
-    A4
-    VolumeEnvelope  5
-    As4
-        .db 14
-
+    E4                              ; $0030
+        .db 1                       ; $0031
+    F4                              ; $0032
+    G4                              ; $0033
+    A4                              ; $0034
+    VolumeEnvelope  5               ; $0035
+    As4                             ; $0037
+        .db 14                      ; $0038
+; ---------------------------------------------------------
 music_ugz_bin_LABEL_8FD1:
-    VolumeEnvelope  8
-    C6
-        .db $07
-    B5
-        .db $01
-    A5
-    G5
-    F5
-    E5
-    AdjustVolume    2
-    Loop            0, 6, music_ugz_bin_LABEL_8FD1
-
-    AdjustVolume    -12
+    VolumeEnvelope  8               ; $0039
+    C6                              ; $003B
+        .db $07                     ; $003C
+    B5                              ; $003D
+        .db $01                     ; $003E
+    A5                              ; $003F
+    G5                              ; $0040
+    F5                              ; $0041
+    E5                              ; $0042
+    AdjustVolume    2               ; $0043
+    Loop            0, 6, music_ugz_bin_LABEL_8FD1      ; $0045
+; ---------------------------------------------------------
+    AdjustVolume    -12             ; $004A
     Rest
         .db $06
     B4
@@ -76,9 +79,9 @@ music_ugz_bin_LABEL_8FD1:
     Ds5
     VolumeEnvelope  5
     Ds5
-        .db $0E
+        .db $0E     ; 72
     Loop            1, 2, music_ugz_bin_LABEL_8FB3
-    
+; ---------------------------------------------------------
 music_ugz_bin_LABEL_8FF4:
     C5
         .db $0A
@@ -88,6 +91,7 @@ music_ugz_bin_LABEL_8FF4:
     As5
         .db $0C
     A5
+
     F5
     Ds5
         .db $03
@@ -109,6 +113,7 @@ music_ugz_bin_LABEL_8FF4:
     G5
         .db $1E
     RepeatLast      $30
+; ---------------------------------------------------------
     Rest
         .db $0A
 
@@ -139,9 +144,11 @@ music_ugz_bin_LABEL_8FF4:
     Ds5
         .db $30
     RepeatLast      $27
+; ---------------------------------------------------------
     Loop            0, 2, music_ugz_bin_LABEL_8FF4
+; ---------------------------------------------------------
     Branch          music_ugz_bin_LABEL_90FE
-    
+; ---------------------------------------------------------
     Fs5
         .db $01
     G5
@@ -175,8 +182,9 @@ music_ugz_bin_LABEL_8FF4:
     G5
     .db $2A
     RepeatLast      $30
+; ---------------------------------------------------------
     Branch          music_ugz_bin_LABEL_90FE
-    
+; ---------------------------------------------------------
     Fs5
         .db $01
     G5
@@ -213,13 +221,15 @@ music_ugz_bin_LABEL_8FF4:
         .db $30
     Gs6
         .db $30
+; ---------------------------------------------------------
     Branch          music_ugz_bin_LABEL_9090
     Branch          music_ugz_bin_LABEL_90B9
     Branch          music_ugz_bin_LABEL_9090
     Branch          music_ugz_bin_LABEL_90E2
     Jump            music_ugz_bin_LABEL_8FB3
     Stop
-    
+
+; ---------------------------------------------------------
 music_ugz_bin_LABEL_9090:
     As5
         .db $01

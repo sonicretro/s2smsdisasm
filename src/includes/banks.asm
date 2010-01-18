@@ -295,7 +295,7 @@ Bank29:
 
 ;===========================================================================
 ;		BANK 29 - 
-;			End credits text & logic. Ring art for each zone.
+;			Collision data. End credits text & logic. Ring art for each zone.
 ;===========================================================================
 .BANK 30
 .ORG $0000

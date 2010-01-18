@@ -1,3 +1,4 @@
+Cllsn_Data_CollisionHeaders:
 .dw DATA_B30_9C41
 .dw DATA_B30_9C49
 .dw DATA_B30_9C51
@@ -62,26 +63,26 @@
 .dw DATA_B30_9E29	; $3D - SEZ/ALZ Tube - horizontal entrance left
 .dw DATA_B30_9E31	; $3E - SEZ/ALZ Tube - horizontal entrance right
 .dw DATA_B30_9E39	; $3F - SEZ/ALZ Tube - ? (blank)
-.dw DATA_B30_9E41
-.dw DATA_B30_9E49
-.dw DATA_B30_9E51
-.dw DATA_B30_9E59	; $0080-$0087
-.dw DATA_B30_9E61
-.dw DATA_B30_9E69
-.dw DATA_B30_9E71
-.dw DATA_B30_9E79	; $0088-$008F
-.dw DATA_B30_9E81
-.dw DATA_B30_9E89
-.dw DATA_B30_9E91
-.dw DATA_B30_9E99	; $0090-$0097
-.dw DATA_B30_9EA1
-.dw DATA_B30_9EA9
-.dw DATA_B30_9EB1
-.dw DATA_B30_9EB9	; $0098-$009F
-.dw DATA_B30_9EC1
-.dw DATA_B30_9EC9
-.dw DATA_B30_9ED1
-.dw DATA_B30_9ED9	; $00A0-$00A7
+.dw DATA_B30_9E41   ; $40
+.dw DATA_B30_9E49   ; $41
+.dw DATA_B30_9E51   ; $42
+.dw DATA_B30_9E59	; $43
+.dw DATA_B30_9E61   ; $44
+.dw DATA_B30_9E69   ; $45
+.dw DATA_B30_9E71   ; $46
+.dw DATA_B30_9E79   ; $47
+.dw DATA_B30_9E81   ; $48
+.dw DATA_B30_9E89   ; $49
+.dw DATA_B30_9E91   ; $4A
+.dw DATA_B30_9E99   ; $4B
+.dw DATA_B30_9EA1   ; $4C
+.dw DATA_B30_9EA9   ; $4D
+.dw DATA_B30_9EB1   ; $4E
+.dw DATA_B30_9EB9   ; $4F
+.dw DATA_B30_9EC1   ; $50
+.dw DATA_B30_9EC9   ; $51
+.dw DATA_B30_9ED1   ; $52
+.dw DATA_B30_9ED9	; $53
 .dw DATA_B30_9EE1
 .dw DATA_B30_9EE9
 .dw DATA_B30_9EF1

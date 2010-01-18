@@ -1,61 +1,61 @@
 ;=============================================
-;	Pointers to object animation sequences.
+;	Pointers to object animation frame sprite mapping data
 ;	Used by routine at $60AC.
 ;=============================================
-ObjectAnimations:
+Object_AnimFrameMappings:
 .dw DATA_B31_87A3
-.dw DATA_B31_80C0			;$01 - Sonic
-.dw DATA_B31_85D1			;$02 - Ring sparkle
-.dw DATA_B31_85EF			;$03 - Speed shoes stars
-.dw DATA_B31_8793			;$04 - Block fragments
-.dw DATA_B31_85EF			;$05 - Invincibility stars
-.dw DATA_B31_87A3			;$06
-.dw DATA_B31_87A5			;$07
-.dw DATA_B31_87DF			;$08
-.dw DATA_B31_8821			;$09
-.dw DATA_B31_8877			;$0A
-.dw DATA_B31_88DD			;$0B
-.dw DATA_B31_88FB			;$0C
-.dw DATA_B31_890C			;$0D
-.dw DATA_B31_892C			;$0E
-.dw AnimData_Explosion		;$0F - Explosion
-.dw AnimData_Monitors		;$10 - Monitors
-.dw AnimData_Monitors
-.dw AnimData_Monitors
-.dw AnimData_Monitors
-.dw DATA_B31_89AE
-.dw DATA_B31_89BF
-.dw DATA_B31_89BF
-.dw DATA_B31_8A34
-.dw DATA_B31_9615
-.dw DATA_B31_8AA1
-.dw DATA_B31_8AB8
-.dw DATA_B31_8AB8
-.dw DATA_B31_8AF1
-.dw DATA_B31_8B02
-.dw DATA_B31_8B12
-.dw DATA_B31_8B2A
-.dw DATA_B31_8B62
-.dw DATA_B31_8B62
-.dw DATA_B31_8B62
-.dw DATA_B31_8B97
-.dw DATA_B31_8BD2
-.dw DATA_B31_8E9D
-.dw DATA_B31_8BF0
-.dw DATA_B31_8C32
-.dw DATA_B31_8C88
-.dw DATA_B31_8C98
-.dw DATA_B31_8CF2
-.dw DATA_B31_8D1E
-.dw DATA_B31_96CA
-.dw DATA_B31_8D3E
-.dw DATA_B31_8D4F
-.dw DATA_B31_8D7E
-.dw DATA_B31_8D8B
-.dw DATA_B31_8D8B
-.dw DATA_B31_8D9C
-.dw DATA_B31_8DDE
-.dw DATA_B31_8E20
+.dw DATA_B31_80C0           ; $01 - Sonic
+.dw DATA_B31_85D1           ; $02 - Ring sparkle
+.dw DATA_B31_85EF           ; $03 - Speed shoes stars
+.dw DATA_B31_8793           ; $04 - Block fragments
+.dw DATA_B31_85EF           ; $05 - Invincibility stars
+.dw DATA_B31_87A3           ; $06 - Special Obj: hides HUD
+.dw DATA_B31_87A5           ; $07 - Block Fragment 2
+.dw DATA_B31_87DF           ; $08 - Dropped ring
+.dw DATA_B31_8821           ; $09 - Air timer countdown
+.dw DATA_B31_8877           ; $0A - ALZ bubble
+.dw DATA_B31_88DD           ; $0B - Water splash
+.dw DATA_B31_88FB           ; $0C - 
+.dw DATA_B31_890C           ; $0D - same logic as UGZ fireball
+.dw DATA_B31_892C           ; $0E - UGZ Fireball
+.dw AnimData_Explosion      ; $0F - Explosion
+.dw AnimData_Monitors       ; $10 - Monitors
+.dw AnimData_Monitors       ; $11 - chaos emerald 1
+.dw AnimData_Monitors       ; $12 - chaos emerald 2
+.dw AnimData_Monitors       ; $13 - chaos emerald 3
+.dw DATA_B31_89AE           ; $14 - chaos emerald 4
+.dw DATA_B31_89BF           ; $15 - same logic as signpost
+.dw DATA_B31_89BF           ; $16 - same logic as signpost
+.dw DATA_B31_8A34           ; $17 - same logic as signpost
+.dw DATA_B31_9615           ; $18 - signpost
+.dw DATA_B31_8AA1           ; $19
+.dw DATA_B31_8AB8           ; $1A
+.dw DATA_B31_8AB8           ; $1B
+.dw DATA_B31_8AF1           ; $1C
+.dw DATA_B31_8B02           ; $1D - intro sequence: clouds
+.dw DATA_B31_8B12           ; $1E - intro sequence: tree
+.dw DATA_B31_8B2A           ; $1F - invalid object
+.dw DATA_B31_8B62           ; $20
+.dw DATA_B31_8B62           ; $21
+.dw DATA_B31_8B62           ; $22
+.dw DATA_B31_8B97           ; $23
+.dw DATA_B31_8BD2           ; $24
+.dw DATA_B31_8E9D           ; $25
+.dw DATA_B31_8BF0           ; $26
+.dw DATA_B31_8C32           ; $27 - glider
+.dw DATA_B31_8C88           ; $28
+.dw DATA_B31_8C98           ; $29
+.dw DATA_B31_8CF2           ; $2A
+.dw DATA_B31_8D1E           ; $2B
+.dw DATA_B31_96CA           ; $2C
+.dw DATA_B31_8D3E           ; $2D
+.dw DATA_B31_8D4F           ; $2E
+.dw DATA_B31_8D7E           ; $2F
+.dw DATA_B31_8D8B           ; $30
+.dw DATA_B31_8D8B           ; $31
+.dw DATA_B31_8D9C           ; $32
+.dw DATA_B31_8DDE           ; $33
+.dw DATA_B31_8E20           ; $34 - motobug
 .dw DATA_B31_8E52
 .dw DATA_B31_98D9
 .dw DATA_B31_8EBB

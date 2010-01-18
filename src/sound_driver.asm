@@ -746,7 +746,7 @@ Sound_InitChannel:        ;$824C
 ; these bytes are copied into the "channel number" byte
 ; of each channel structure (e.g. $DD41)
 Sound_Data_ChannelNumbers:        ;$8284
-.db Sound_PSG_Latch | Sound_PSG_Tone0, 
+.db Sound_PSG_Latch | Sound_PSG_Tone0
 .db Sound_PSG_Latch | Sound_PSG_Tone1
 .db Sound_PSG_Latch | Sound_PSG_Tone2
 .db Sound_PSG_Latch | Sound_PSG_Noise
@@ -1028,7 +1028,7 @@ Sound_ReadStreamData:        ; $8370
     ld    a, (de)
     inc   de
     
-    ; jump if the byte a control byte (i.e. >= $E0)?
+    ; jump if the byte is a control byte (i.e. >= $E0)?
     cp    $E0
     jp    nc, Sound_InterpretCommand_WithReturn
     
@@ -1673,10 +1673,10 @@ Sound_ApplyEnvelope_GetData:        ; $861B
 
     ; if value > $80 it is a command byte
     cp    $82
-    jr    z, LABEL_8637_172
+    jr    z, Sound_ApplyEnvelope_SetVolumeOff
     
     cp    $81
-    jr    z, LABEL_8641_173
+    jr    z, Sound_ApplyEnvelope_HoldVolume
     
     cp    $80
     jr    z, Sound_ApplyEnvelope_ResetIndex
@@ -1686,7 +1686,8 @@ Sound_ApplyEnvelope_GetData:        ; $861B
     ld    a, (de)
     jr    Sound_ApplyEnvelope_SetIndex
 
-LABEL_8637_172:
+
+Sound_ApplyEnvelope_SetVolumeOff:       ; $8637
     ; suppress psg writes
     ; this SET op seems a bit pointless since Sound_SetVolumeOff
     ; does the same thing
@@ -1700,7 +1701,7 @@ Sound_ApplyEnvelope_ResetIndex:     ; $863E
     xor   a
     jr    Sound_ApplyEnvelope_SetIndex
 
-LABEL_8641_173:
+Sound_ApplyEnvelope_HoldVolume:     ; $8641
     ; suppress volume writes
     set   Sound_ChnlVolSuppressBit, (ix + Sound_ChnlControl)
     pop   hl
@@ -1808,7 +1809,7 @@ LABEL_8686_180:
     jp    Sound_SetVolumeOff
 
 LABEL_86A1_184:
-    ld    a, $03        ; ???
+    ld    a, $03        ; volume envelope
     ld    b, $02        ; volume adjustment
     ld    c, Sound_PSG_Latch | Sound_PSG_Noise | 4      ; white noise, reset to $10
     jr    LABEL_86CF_187
@@ -1943,7 +1944,7 @@ Sound_CommandDispatchTable:         ;$8700
 .dw Sound_Command_SetGlobalSpeed    ; $ED
 .dw Sound_Command_DoNothing         ; $EE
 .dw Sound_Data_PitchEnvelopes       ; $EF - invalid command
-.dw Sound_Command_PitchBend           ; $F0
+.dw Sound_Command_PitchBend         ; $F0
 .dw Sound_Data_PitchEnvelopes       ; $F1 - invalid command
 .dw LABEL_87DB                      ; $F2
 .dw LABEL_8766                      ; $F3
@@ -2505,7 +2506,7 @@ Sound_Data_Music_SEZ:           ; $A2CE
 Sound_Data_Music_Intro:         ; $A7C6
 ;.incbin "sound/music_intro.bin"
 .include "sound/music_intro.asm"
-;.include "sound/music_test.asm"
+;.include "sound/music_starlight.asm"
 
 Sound_Data_Music_Boss:          ; $AA00
 ;.incbin "sound/music_boss.bin"

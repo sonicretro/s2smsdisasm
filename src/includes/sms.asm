@@ -19,6 +19,24 @@
 
 
 ; =========================================================
+;  Input Bitfield
+; ---------------------------------------------------------
+.def    BTN_UP_BIT          0
+.def    BTN_DOWN_BIT        1
+.def    BTN_LEFT_BIT        2
+.def    BTN_RIGHT_BIT       3
+.def    BTN_1_BIT           4
+.def    BTN_2_BIT           5
+
+.def    BTN_UP              1 << BTN_UP_BIT
+.def    BTN_DOWN            1 << BTN_DOWN_BIT
+.def    BTN_LEFT            1 << BTN_LEFT_BIT
+.def    BTN_RIGHT           1 << BTN_RIGHT_BIT
+.def    BTN_1               1 << BTN_1_BIT
+.def    BTN_2               1 << BTN_2_BIT
+
+
+; =========================================================
 ;  Display Mode Bitfields
 ; ---------------------------------------------------------
 .def	VDP_DispMode_M1			$01

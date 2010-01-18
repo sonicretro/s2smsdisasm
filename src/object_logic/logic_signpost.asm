@@ -73,8 +73,9 @@ Signpost_State_04_Logic_01:		;$B8F7
 
 LABEL_B31_B901:
 	ld      a, (CurrentLevel)
-	cp      $04
+	cp      Level_GMZ
 	jr      nz, LABEL_B31_B912
+
 	ld      a, (CurrentAct)
 	or      a
 	jr      nz, LABEL_B31_B912
@@ -187,22 +188,22 @@ LABEL_B31_B9A0:
 ;*	the ring signpost & add 10 rings to the counter.	*
 ;********************************************************
 LABEL_B31_B9C2:
-	ld      a, ($D299)		;check for a multiple of 10 rings.
+	ld      a, (RingCounter)		;check for a multiple of 10 rings.
 	and     $0F
 	jr      nz, LABEL_B31_B9F3	;bail out
-	ld      a, ($D299)		;add 10 rings to the counter
+	ld      a, (RingCounter)		;add 10 rings to the counter
 	add     a, $10
 	daa     
-	ld      ($D299), a
+	ld      (RingCounter), a
 	ld      a, SFX_Ring
 	ld      ($DD04), a
 	call    LABEL_200 + $010E
-	ld      a, ($D299)		;if the ring count wrapped past 99
+	ld      a, (RingCounter)		;if the ring count wrapped past 99
 	or      a				;add 1 life.
 	jr      nz, +
-	ld      a, ($D298)
+	ld      a, (LifeCounter)
 	inc     a
-	ld      ($D298), a
+	ld      (LifeCounter), a
 	ld      a, SFX_ExtraLife
 	ld      ($DD04), a
 	call    LABEL_200 + $010B

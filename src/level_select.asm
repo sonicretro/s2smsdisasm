@@ -326,7 +326,7 @@ LevelSelect_Values:
 .db $06, $02	;Crystal Egg Zone - Act 3
 
 LevelSelect_MainLoop:	;0E46
-	call WaitForInterrupt
+	call Engine_WaitForInterrupt
 	call _CheckInput
 	call _DrawCursor
 	ld   a, ($D147)

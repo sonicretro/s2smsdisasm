@@ -12,8 +12,8 @@
 .dw Logic_ALZ_Bubble			;0A
 .dw Logic_WaterSplash			;0B
 .dw DATA_B31_B513				;0C
-.dw Logic_UGZ_Fireball			;0D
-.dw Logic_UGZ_Fireball			;0E
+.dw Logic_UGZ_Fireball			;0D - same logic as $0E
+.dw Logic_UGZ_Fireball			;0E - used in UGZ
 .dw Logic_Explosion				;0F
 .dw Logic_Monitors				;10
 .dw Logic_ChaosEmerald			;11

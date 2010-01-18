@@ -1,3 +1,5 @@
+
+
 .def	PlayerState_Standing		$01
 .def	PlayerState_Idle			$02	;idle animation
 .def	PlayerState_LookUp			$03
@@ -12,6 +14,8 @@
 .def	PlayerState_OnLoop			$0C	;sprite rotated 45 degrees CCW.
 
 .def	PlayerState_Falling			$0E
+
+.def    PlayerState_16              $10 ;used in intro sequence; see $0F41.
 
 .def	PlayerState_HangGlider		$13	;set after touching hang glider
 .def	PlayerState_HangGliderBack	$14	;set when pressing left with hang glider
@@ -35,4 +39,7 @@
 
 .def	PlayerState_Drowning		$28
 
+.def    PlayerState_EndSeq_Init     $2A ; set by routine at $6F3 on starting the end sequence.
 .def	PlayerState_EndSequence		$2B
+
+.def    PlayerState_ContinueScreen  $2F 

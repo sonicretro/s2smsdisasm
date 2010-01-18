@@ -21,7 +21,7 @@ ECHO ==========================
 REM Use fcomp to compare with original ROM
 REM ECHO Comparing with original:
 fcomp s2.sms "Sonic the Hedgehog 2 (UE) [!].sms" > compare.txt
-REM fcomp s2.sms "Sonic the Hedgehog 2 (UE) (V2.2).sms"
+REM fcomp s2.sms "Sonic the Hedgehog 2 (UE) (V2.2).sms" > compare.txt
 
 GOTO end
 

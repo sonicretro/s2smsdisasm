@@ -1,14 +1,34 @@
-Driver Memory Layout:
 -----------------------------------------------------------
+Driver Memory Layout:
 
-    $DD08           -   Reset trigger.
+    $DD01           -   Global speed counter.
+    $DD02           -   Global speed counter reset value.
+    $DD03           -   Main trigger byte.
+    $DD04           -   Trigger 1.
+    $DD05           -   Trigger 2.
+    $DD06           -   Trigger 3.
+    $DD07           -   ???
+    $DD08           -   Driver reset trigger.
 	$DD09			-	Fade out countdown major value.
 	$DD0A			-	Fade out countdown minor value.
 	$DD0B			-	Fade out minor countdown reset value.
-
+    $DD0C           -   ???
+    $DD0D           -   Current sound effect number.
+    $DD0E           -   ???
+    $DD0F           -   Sound priority.
+    $DD10           -   ???
+    $DD11           -   ? noise chnl related
+    $DD12           -   ???
+    $DD13           -   ???
+    $DD14           -   ???
+    $DD15           -   ? nouse chnl related
     $DD16           -   Noise channel volume.
+    $DD17 -> $DD3F  -   Unused?
+	
+    $DD40 ->        -   Channel slots.
 
-	$DD46			-	Volume.
+-----------------------------------------------------------
+Channel Structures:
 
 -----------------------------------------------------------
 Sound Module Header

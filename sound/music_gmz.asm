@@ -291,6 +291,7 @@ music_gmz_bin_LABEL_95E2:
 .db $84    ; Ds3
     .db $06
 .db $F9
+
 music_gmz_bin_LABEL_960B:
 .db $F5
     .db $03
@@ -446,26 +447,16 @@ music_gmz_bin_Channel1:
     .db $00
     .db $00
 music_gmz_bin_LABEL_96A3:
-.db $F8
-    .dw music_gmz_bin_LABEL_9723
-.db $F8
-    .dw music_gmz_bin_LABEL_9723
-.db $FB
-    .db $01
-.db $F8
-    .dw music_gmz_bin_LABEL_9723
-.db $F8
-    .dw music_gmz_bin_LABEL_9723
-.db $FB
-    .db $FF
-.db $FB
-    .db $0C
-.db $F8
-    .dw music_gmz_bin_LABEL_9741
-.db $FB
-    .db $F4
-.db $E6
-    .db $02
+    Branch          music_gmz_bin_LABEL_9723
+    Branch          music_gmz_bin_LABEL_9723
+    PitchAdjust     1
+    Branch          music_gmz_bin_LABEL_9723
+    Branch          music_gmz_bin_LABEL_9723
+    PitchAdjust     -1
+    PitchAdjust     12
+    Branch          music_gmz_bin_LABEL_9741
+    PitchAdjust     -12
+    AdjustVolume    2
 music_gmz_bin_LABEL_96BC:
 .db $F5
     .db $06

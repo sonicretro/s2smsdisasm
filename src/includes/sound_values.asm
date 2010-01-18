@@ -1,3 +1,5 @@
+.def    Music_Null          $00
+
 .def	Music_FirstSlot		$81
 .def	Music_AquaLake		Music_FirstSlot
 .def	Music_Underground	$82

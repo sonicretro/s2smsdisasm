@@ -803,95 +803,16 @@ LABEL_B28_8746:
 	and     $0f
 	jr      z, +
 	ld      a, $ff
-	ld      ($d3a8), a
+	ld      (Player_HurtTrigger), a
 +:	bit     6, (ix+$04)
 	ret     z
 	ld      (ix+$00), $fe
 	ret     
 
-DATA_B28_8762:
-.dw LABEL_B28_876A
-.dw LABEL_B28_8770
-.dw LABEL_B28_8776
-.dw LABEL_B28_877C
-
-LABEL_B28_876A:
-.db $01, $00
-	.dw LABEL_B28_878E
-.db $FF, $00
-
-LABEL_B28_8770:
-.db $F0, $01
-	.dw LABEL_B28_8793
-.db $FF, $00
-
-LABEL_B28_8776:
-.db $F0, $00
-	.dw LABEL_B28_87B3
-.db $FF, $00
-
-LABEL_B28_877C:
-.db $08, $01
-	.dw LABEL_B28_87EF
-.db $08, $02
-	.dw LABEL_B28_87EF
-.db $08, $03
-	.dw LABEL_B28_87EF
-.db $08, $04
-	.dw LABEL_B28_87EF
-.db $FF, $00
 
 
-LABEL_B28_878E:
-	ld      (ix+$02), $01
-	ret     
+.include "src/object_logic/logic_glider.asm"
 
-LABEL_B28_8793:
-	call    VF_Engine_CheckCollision
-	ld      a, (ix+$21)
-	or      a
-	ret     z
-	xor     a
-	ld      (ix+$21), a
-	ld      ($d521), a
-	ld      a, $11
-	ld      ($d502), a
-	call    LABEL_200 + $7E
-	ld      (ix+$02), $02
-	set     7, (ix+$04)
-	ret     
-
-LABEL_B28_87B3:
-	call    VF_Engine_MoveObjectToPlayer
-	ld      bc, ($d511)
-	ld      de, ($d514)
-	ld      (ix+$3a), c
-	ld      (ix+$3b), b
-	ld      (ix+$3c), e
-	ld      (ix+$3d), d
-	ld      a, ($d501)
-	cp      $11
-	ret     nc
-	ld      hl, ($d516)
-	ld      de, $ff80
-	add     hl, de
-	ld      (ix+$16), l
-	ld      (ix+$17), h
-	ld      bc, $ff00
-	ld      (ix+$18), c
-	ld      (ix+$19), b
-	ld      (ix+$02), $03
-	res     7, (ix+$04)
-	ret
-
-LABEL_B28_87EF:
-	ld      l, (ix+$18)
-	ld      h, (ix+$19)
-	ld      de, $0008
-	add     hl, de
-	ld      (ix+$18), l
-	ld      (ix+$19), h
-	jp      VF_Engine_UpdateObjectPosition
 
 
 DATA_B28_8802:
@@ -1279,7 +1200,7 @@ LABEL_B28_8D78:
 	and     $0f
 	ret     z
 	ld      a, $ff
-	ld      ($d3a8), a
+	ld      (Player_HurtTrigger), a
 	ret     
 
 LABEL_B28_8D95:
@@ -4087,7 +4008,7 @@ LABEL_B28_AEA0:
 	ret     
 
 LABEL_B28_AEB2:
-	jp		LABEL_200 + $0C
+	jp		VF_Logic_CheckDestroyObject
 
 
 DATA_B28_AEB5:
@@ -4128,7 +4049,7 @@ LABEL_B28_AEE0:
 	ret     nz
 	call    VF_Engine_CheckCollision
 	call    LABEL_200 + $3F
-	jp      LABEL_200 + $0C
+	jp      VF_Logic_CheckDestroyObject
 
 LABEL_B28_AEEE:
 	bit     6, (ix+$04)
@@ -4147,7 +4068,7 @@ LABEL_B28_AEEE:
 	sbc     hl, de
 +:	ld      a, h
 	or      a
-	jp      nz, LABEL_200 + $0C
+	jp      nz, VF_Logic_CheckDestroyObject
 	ld      b, l
 	ld      hl, ($d514)
 	ld      e, (ix+$14)
@@ -4161,15 +4082,15 @@ LABEL_B28_AEEE:
 	sbc     hl, de
 +:	ld      a, h
 	or      a
-	jp      nz, LABEL_200 + $0C
+	jp      nz, VF_Logic_CheckDestroyObject
 	ld      a, l
 	add     a, b
-	jp      c, LABEL_200 + $0C
+	jp      c, VF_Logic_CheckDestroyObject
 	cp      $80
-	jp      nc, LABEL_200 + $0C
+	jp      nc, VF_Logic_CheckDestroyObject
 	ld      (ix+$02), $02
 	ld      (ix+$1f), $50
-	jp      LABEL_200 + $0C
+	jp      VF_Logic_CheckDestroyObject
 
 LABEL_B28_AF43:
 	bit     6, (ix+$04)
@@ -4194,9 +4115,9 @@ LABEL_B28_AF43:
 	and     $0f
 	jr      nz, +
 	dec     (ix+$1f)
-	jp      nz, LABEL_200 + $0C
+	jp      nz, VF_Logic_CheckDestroyObject
 +:	ld      (ix+$02), $03
-	jp      LABEL_200 + $0C
+	jp      VF_Logic_CheckDestroyObject
 
 LABEL_B28_AF8A:
 	bit     6, (ix+$04)
@@ -4221,13 +4142,13 @@ LABEL_B28_AF8A:
 	ld      a, (ix+$16)
 	ld      h, (ix+$17)
 	or      h
-	jp      nz, LABEL_200 + $0C
+	jp      nz, VF_Logic_CheckDestroyObject
 	ld      a, (ix+$18)
 	ld      h, (ix+$19)
 	or      h
-	jp      nz, LABEL_200 + $0C
+	jp      nz, VF_Logic_CheckDestroyObject
 	ld      (ix+$02), $01
-	jp      LABEL_200 + $0C
+	jp      VF_Logic_CheckDestroyObject
 
 
 Logic_Motobug:			;$AFDB
@@ -4954,7 +4875,7 @@ LABEL_B28_B686:
 	bit     1, a
 	ret     z
 	call    LABEL_B28_B698
-	jp      LABEL_200 + $0C
+	jp      VF_Logic_CheckDestroyObject
 
 LABEL_B28_B698:
 	push    ix
@@ -5040,7 +4961,7 @@ LABEL_B28_B6E3:
 +:	ret     
 
 LABEL_B28_B737:
-	jp      LABEL_200 + $0C
+	jp      VF_Logic_CheckDestroyObject
 
 
 DATA_B28_B73A:
@@ -5249,7 +5170,7 @@ LABEL_B28_B8BC:
 	ret     
 
 LABEL_B28_B8DF:
-	jp      LABEL_200 + $0C
+	jp      VF_Logic_CheckDestroyObject
 
 
 DATA_B28_B8E2:
@@ -5541,7 +5462,7 @@ LABEL_B28_BAC9:
 +:	ret     
 
 LABEL_B28_BB27:
-	jp      LABEL_200 + $0C
+	jp      VF_Logic_CheckDestroyObject
 
 
 DATA_B28_BB2A:
@@ -6123,7 +6044,7 @@ LABEL_B28_BEDA:
 	ret     
 
 LABEL_B28_BEE7:
-	jp      LABEL_200 + $0C
+	jp      VF_Logic_CheckDestroyObject
 
 
 DATA_B28_BEEA:
